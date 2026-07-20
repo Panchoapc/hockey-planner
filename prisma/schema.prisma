@@ -1,0 +1,88 @@
+// Schema minimo Dia 0 — scheduler de torneos FEHOCH.
+// Postgres (Supabase). Dos URLs desde el inicio:
+//   DATABASE_URL -> pooled (Supavisor transaction, 6543) para runtime.
+//   DIRECT_URL   -> directa (5432) para migraciones.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Genero {
+  VARONES
+  DAMAS
+}
+
+enum Formato {
+  ADULTO
+  SUB14
+  SUB12
+}
+
+// Regla de acceso por genero:
+//   CLUB    -> la usan varones Y damas.
+//   COLEGIO -> exclusiva femenina (solo damas).
+enum PoolCancha {
+  CLUB
+  COLEGIO
+}
+
+model Club {
+  id      String   @id @default(cuid())
+  nombre  String   @unique
+  equipos Equipo[]
+}
+
+model Cancha {
+  id       String     @id @default(cuid())
+  nombre   String     @unique
+  pool     PoolCancha
+  partidos Partido[]
+}
+
+model Categoria {
+  id        String    @id @default(cuid())
+  slug      String    @unique
+  nombre    String
+  genero    Genero
+  formato   Formato
+  bloqueMin Int
+  equipos   Equipo[]
+  partidos  Partido[]
+}
+
+model Equipo {
+  id             String    @id @default(cuid())
+  nombre         String
+  categoria      Categoria @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+  categoriaId    String
+  club           Club?     @relation(fields: [clubId], references: [id])
+  clubId         String?
+  partidosLocal  Partido[] @relation("local")
+  partidosVisita Partido[] @relation("visita")
+
+  @@unique([categoriaId, nombre])
+}
+
+model Partido {
+  id          String    @id @default(cuid())
+  categoria   Categoria @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+  categoriaId String
+  local       Equipo    @relation("local", fields: [localId], references: [id])
+  localId     String
+  visita      Equipo    @relation("visita", fields: [visitaId], references: [id])
+  visitaId    String
+  jornada     Int
+
+  // Resultado del scheduler (naive en Dia 0). Null = sin asignar.
+  cancha   Cancha? @relation(fields: [canchaId], references: [id])
+  canchaId String?
+  dia      String?
+  hora     String?
+
+  @@index([categoriaId])
+}
