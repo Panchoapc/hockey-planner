@@ -1,14 +1,17 @@
-// Seed Dia 1: carga varias categorias reales (Varones A + Varones B + Damas
-// Primera A) desde seed/torneo.seed.json. Con una sola categoria la mayoria de
-// las restricciones son vacuas; con varias el solver tiene algo que resolver.
+// Seed Dia 2: recintos + localia. Carga Varones A + B + Damas Primera A en
+// DOBLE rueda (formato oficial). admiteVarones se DERIVA.
 import {
   PrismaClient,
   type Genero,
   type Formato,
-  type PoolCancha,
 } from "@prisma/client";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import {
+  clubDeEquipo,
+  recintoDeEquipo,
+  recintosQueAdmitenVarones,
+} from "../src/lib/localia";
 
 const prisma = new PrismaClient();
 
@@ -19,26 +22,18 @@ interface SeedFile {
     genero: string;
     nombre: string;
     formato: string;
-    poolCancha: string;
     equipos: string[];
   }[];
-  canchasAcceso: {
-    poolClubMixto: { canchas: number };
-    poolColegioFemenino: { canchas: number };
-  };
+}
+interface Catalogo {
+  recintos: { nombre: string; ciudad: string }[];
+  clubARecinto: Record<string, string>;
 }
 
-// Categorias que cargamos en el Dia 1 (todas formato adulto => bloque 90).
-const CATEGORIAS = [
-  "varones-primera-a",
-  "varones-primera-b",
-  "damas-primera-a",
-];
+const CATEGORIAS = ["varones-primera-a", "varones-primera-b", "damas-primera-a"];
 
-/** Deriva el club quitando sufijo numerico o de una sola letra.
- *  "CCC 1" -> "CCC", "PWCC A" -> "PWCC", "U. Catolica" -> igual. */
-function clubDeEquipo(nombreEquipo: string): string {
-  return nombreEquipo.replace(/\s+([0-9]+|[A-Z])$/, "").trim();
+function leer<T>(rel: string): T {
+  return JSON.parse(readFileSync(join(process.cwd(), rel), "utf-8"));
 }
 
 function mapFormato(f: string): Formato {
@@ -48,28 +43,38 @@ function mapFormato(f: string): Formato {
 }
 
 async function main() {
-  const data: SeedFile = JSON.parse(
-    readFileSync(join(process.cwd(), "seed", "torneo.seed.json"), "utf-8"),
-  );
+  const data = leer<SeedFile>("seed/torneo.seed.json");
+  const cat = leer<Catalogo>("seed/recintos.seed.json");
+  const cats = CATEGORIAS.map((slug) => {
+    const c = data.categorias.find((x) => x.id === slug);
+    if (!c) throw new Error(`No se encontro ${slug}`);
+    return c;
+  });
 
-  // 1) Limpieza (orden por dependencias).
+  // 1) Limpieza.
   await prisma.partido.deleteMany();
   await prisma.equipo.deleteMany();
   await prisma.categoria.deleteMany();
   await prisma.club.deleteMany();
-  await prisma.cancha.deleteMany();
+  await prisma.recinto.deleteMany();
 
-  // 2) Canchas. TODO(PLAN §9): cantidades sin confirmar. Supuesto: 7 club + 7 colegio.
-  const nClub = data.canchasAcceso.poolClubMixto.canchas;
-  const nColegio = data.canchasAcceso.poolColegioFemenino.canchas;
-  const canchas: { nombre: string; pool: PoolCancha }[] = [];
-  for (let i = 1; i <= nClub; i++)
-    canchas.push({ nombre: `Club ${i}`, pool: "CLUB" });
-  for (let i = 1; i <= nColegio; i++)
-    canchas.push({ nombre: `Colegio ${i}`, pool: "COLEGIO" });
-  await prisma.cancha.createMany({ data: canchas });
+  // 2) Recintos con admiteVarones DERIVADO.
+  const todosEquipos = cats.flatMap((c) =>
+    c.equipos.map((nombre) => ({
+      nombre,
+      genero: c.genero.toUpperCase() as Genero,
+    })),
+  );
+  const admiten = recintosQueAdmitenVarones(todosEquipos, cat.clubARecinto);
+  const recintoIdPorNombre = new Map<string, string>();
+  for (const r of cat.recintos) {
+    const rec = await prisma.recinto.create({
+      data: { nombre: r.nombre, ciudad: r.ciudad, admiteVarones: admiten.has(r.nombre) },
+    });
+    recintoIdPorNombre.set(r.nombre, rec.id);
+  }
 
-  // 3) Clubs globales (dedupe entre categorias).
+  // 3) Clubs (dedupe).
   const clubIdPorNombre = new Map<string, string>();
   const asegurarClub = async (nombre: string) => {
     if (clubIdPorNombre.has(nombre)) return clubIdPorNombre.get(nombre)!;
@@ -82,33 +87,34 @@ async function main() {
     return club.id;
   };
 
-  // 4) Categorias + equipos.
+  // 4) Categorias (DOBLE rueda) + equipos con localia.
   let totalEquipos = 0;
-  for (const slug of CATEGORIAS) {
-    const cat = data.categorias.find((c) => c.id === slug);
-    if (!cat) throw new Error(`No se encontro la categoria ${slug}`);
-    const bloqueMin = data.formatosPartido[cat.formato].bloqueMin;
+  for (const c of cats) {
+    const bloqueMin = data.formatosPartido[c.formato].bloqueMin;
     const categoria = await prisma.categoria.create({
       data: {
-        slug: cat.id,
-        nombre: cat.nombre,
-        genero: cat.genero.toUpperCase() as Genero,
-        formato: mapFormato(cat.formato),
+        slug: c.id,
+        nombre: c.nombre,
+        genero: c.genero.toUpperCase() as Genero,
+        formato: mapFormato(c.formato),
+        rueda: "DOBLE", // TODO: bloque A juvenil seria UNICA (14 equipos).
         bloqueMin,
       },
     });
-    for (const nombreEquipo of cat.equipos) {
+    for (const nombreEquipo of c.equipos) {
+      const recintoNombre = recintoDeEquipo(nombreEquipo, cat.clubARecinto);
+      const recintoId = recintoIdPorNombre.get(recintoNombre)!;
       const clubId = await asegurarClub(clubDeEquipo(nombreEquipo));
       await prisma.equipo.create({
-        data: { nombre: nombreEquipo, categoriaId: categoria.id, clubId },
+        data: { nombre: nombreEquipo, categoriaId: categoria.id, clubId, recintoLocalId: recintoId },
       });
     }
-    totalEquipos += cat.equipos.length;
+    totalEquipos += c.equipos.length;
   }
 
   console.log(
-    `Seed OK: ${CATEGORIAS.length} categorias, ${totalEquipos} equipos, ` +
-      `${clubIdPorNombre.size} clubs, ${canchas.length} canchas.`,
+    `Seed OK: ${cats.length} categorias (DOBLE), ${totalEquipos} equipos, ` +
+      `${cat.recintos.length} recintos (${admiten.size} admiten varones).`,
   );
 }
 

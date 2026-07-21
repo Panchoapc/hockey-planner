@@ -1,7 +1,5 @@
-// Schema minimo Dia 0 — scheduler de torneos FEHOCH.
-// Postgres (Supabase). Dos URLs desde el inicio:
-//   DATABASE_URL -> pooled (Supavisor transaction, 6543) para runtime.
-//   DIRECT_URL   -> directa (5432) para migraciones.
+// Schema Dia 2 — scheduler FEHOCH con recintos y localia.
+// Postgres (Supabase). DATABASE_URL (pooled 6543) + DIRECT_URL (5432).
 generator client {
   provider = "prisma-client-js"
 }
@@ -23,12 +21,9 @@ enum Formato {
   SUB12
 }
 
-// Regla de acceso por genero:
-//   CLUB    -> la usan varones Y damas.
-//   COLEGIO -> exclusiva femenina (solo damas).
-enum PoolCancha {
-  CLUB
-  COLEGIO
+enum Rueda {
+  UNICA
+  DOBLE
 }
 
 model Club {
@@ -37,11 +32,15 @@ model Club {
   equipos Equipo[]
 }
 
-model Cancha {
-  id       String     @id @default(cuid())
-  nombre   String     @unique
-  pool     PoolCancha
-  partidos Partido[]
+// Un recinto (sede). Recurso escaso: 1 cancha, capacidad = slots del finde.
+// admiteVarones se DERIVA en el seed (true sii un equipo masculino es local).
+model Recinto {
+  id            String    @id @default(cuid())
+  nombre        String    @unique
+  ciudad        String
+  admiteVarones Boolean
+  equiposLocal  Equipo[]
+  partidos      Partido[]
 }
 
 model Categoria {
@@ -50,6 +49,7 @@ model Categoria {
   nombre    String
   genero    Genero
   formato   Formato
+  rueda     Rueda
   bloqueMin Int
   equipos   Equipo[]
   partidos  Partido[]
@@ -62,6 +62,8 @@ model Equipo {
   categoriaId    String
   club           Club?     @relation(fields: [clubId], references: [id])
   clubId         String?
+  recintoLocal   Recinto   @relation(fields: [recintoLocalId], references: [id])
+  recintoLocalId String
   partidosLocal  Partido[] @relation("local")
   partidosVisita Partido[] @relation("visita")
 
@@ -78,12 +80,12 @@ model Partido {
   visitaId    String
   jornada     Int
 
-  // Resultado del scheduler (naive en Dia 0). Null = sin asignar.
-  cancha   Cancha? @relation(fields: [canchaId], references: [id])
-  canchaId String?
-  dia      String?
-  hora     String?
-  arbitros String[] @default([])
+  // Resultado del scheduler. Null = sin asignar (saturacion).
+  recinto   Recinto? @relation(fields: [recintoId], references: [id])
+  recintoId String?
+  dia       String?
+  hora      String?
+  arbitros  String[] @default([])
 
   @@index([categoriaId])
 }
