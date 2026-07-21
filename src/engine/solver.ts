@@ -1,26 +1,29 @@
-import { canchasElegibles } from "./eligibility";
+import { esRecintoElegible } from "./eligibility";
 import { esIndeseable, horaDesirabilidad, puntajeTotal } from "./scoring";
 import type {
   Asignacion,
   PartidoInput,
   RazonInfactible,
+  RecintoInput,
   ScheduleResult,
   SinAsignar,
   Slot,
   SolverInput,
 } from "./types";
 
-// SOLVER real (Dia 1): greedy (most-constrained-first) + busqueda local sobre
-// la funcion de puntaje. Garantiza el 100% de las duras y maximiza las blandas.
+// SOLVER real (Dia 2): greedy (most-constrained-first) + busqueda local.
+// El recurso escaso es la capacidad de fin de semana de cada RECINTO. Cada
+// partido solo puede ir al recinto del local (default) o al de la visita
+// (cesion, penalizada). Duras al 100%; blandas por puntaje.
 
 const slotKey = (dia: string, hora: string) => `${dia}|${hora}`;
-const cellKey = (canchaId: string, dia: string, hora: string) =>
-  `${canchaId}|${dia}|${hora}`;
+const cellKey = (recintoId: string, dia: string, hora: string) =>
+  `${recintoId}|${dia}|${hora}`;
 const teamKey = (eq: string, dia: string, hora: string) =>
   `${eq}|${dia}|${hora}`;
 
 interface Estado {
-  canchaOcupada: Set<string>;
+  recintoOcupado: Set<string>;
   equipoOcupado: Set<string>;
   arbitrosPorSlot: Map<string, Set<string>>;
   bloqueados: Set<string>;
@@ -28,7 +31,7 @@ interface Estado {
 
 function crearEstado(input: SolverInput): Estado {
   return {
-    canchaOcupada: new Set(),
+    recintoOcupado: new Set(),
     equipoOcupado: new Set(),
     arbitrosPorSlot: new Map(),
     bloqueados: new Set(input.bloqueos.map((b) => slotKey(b.dia, b.hora))),
@@ -36,7 +39,7 @@ function crearEstado(input: SolverInput): Estado {
 }
 
 function ocupar(estado: Estado, a: Asignacion, p: PartidoInput) {
-  estado.canchaOcupada.add(cellKey(a.canchaId, a.dia, a.hora));
+  estado.recintoOcupado.add(cellKey(a.recintoId, a.dia, a.hora));
   estado.equipoOcupado.add(teamKey(p.localId, a.dia, a.hora));
   estado.equipoOcupado.add(teamKey(p.visitaId, a.dia, a.hora));
   const sk = slotKey(a.dia, a.hora);
@@ -46,7 +49,7 @@ function ocupar(estado: Estado, a: Asignacion, p: PartidoInput) {
 }
 
 function liberar(estado: Estado, a: Asignacion, p: PartidoInput) {
-  estado.canchaOcupada.delete(cellKey(a.canchaId, a.dia, a.hora));
+  estado.recintoOcupado.delete(cellKey(a.recintoId, a.dia, a.hora));
   estado.equipoOcupado.delete(teamKey(p.localId, a.dia, a.hora));
   estado.equipoOcupado.delete(teamKey(p.visitaId, a.dia, a.hora));
   const set = estado.arbitrosPorSlot.get(slotKey(a.dia, a.hora));
@@ -69,14 +72,31 @@ function arbitrosLibres(
   return null;
 }
 
+/** Recintos candidatos de un partido: {local, visita}, local primero. Filtra
+ *  por elegibilidad de genero (invariante; por construccion siempre pasa). */
+function candidatos(
+  p: PartidoInput,
+  recintoPorId: Map<string, RecintoInput>,
+): RecintoInput[] {
+  const ids = p.recintoLocalId === p.recintoVisitaId
+    ? [p.recintoLocalId]
+    : [p.recintoLocalId, p.recintoVisitaId];
+  const out: RecintoInput[] = [];
+  for (const id of ids) {
+    const r = recintoPorId.get(id);
+    if (r && esRecintoElegible(p.genero, r)) out.push(r);
+  }
+  return out;
+}
+
 function celdaFactibleSinArbitros(
   estado: Estado,
   p: PartidoInput,
-  canchaId: string,
+  recintoId: string,
   s: Slot,
 ): boolean {
   if (estado.bloqueados.has(slotKey(s.dia, s.hora))) return false;
-  if (estado.canchaOcupada.has(cellKey(canchaId, s.dia, s.hora))) return false;
+  if (estado.recintoOcupado.has(cellKey(recintoId, s.dia, s.hora))) return false;
   if (estado.equipoOcupado.has(teamKey(p.localId, s.dia, s.hora))) return false;
   if (estado.equipoOcupado.has(teamKey(p.visitaId, s.dia, s.hora))) return false;
   return true;
@@ -85,68 +105,82 @@ function celdaFactibleSinArbitros(
 export function solve(input: SolverInput): ScheduleResult {
   const estado = crearEstado(input);
   const partidoPorId = new Map(input.partidos.map((p) => [p.id, p]));
+  const recintoPorId = new Map(input.recintos.map((r) => [r.id, r]));
   const asignaciones: Asignacion[] = [];
   const sinAsignar: SinAsignar[] = [];
   const fijos = new Set<string>();
 
   const indeseablesPorEquipo = new Map<string, number>();
-  const canchaDiaUsada = new Set<string>();
-  const incIndeseable = (eq: string) =>
+  const recintoDiaUsado = new Set<string>();
+  const inc = (eq: string) =>
     indeseablesPorEquipo.set(eq, (indeseablesPorEquipo.get(eq) ?? 0) + 1);
 
   const registrar = (a: Asignacion, p: PartidoInput) => {
     ocupar(estado, a, p);
     asignaciones.push(a);
-    canchaDiaUsada.add(`${a.canchaId}|${a.dia}`);
+    recintoDiaUsado.add(`${a.recintoId}|${a.dia}`);
     if (esIndeseable(a.hora)) {
-      incIndeseable(p.localId);
-      incIndeseable(p.visitaId);
+      inc(p.localId);
+      inc(p.visitaId);
     }
   };
 
-  // 1) PRE-ASIGNADOS (TV): fijos, se colocan primero y no se reoptimizan.
+  // 1) PRE-ASIGNADOS (TV): fijos.
   for (const pa of input.preAsignados) {
     const p = partidoPorId.get(pa.partidoId);
     if (!p) continue;
     const refs = arbitrosLibres(estado, pa.dia, pa.hora, input.arbitros, 2);
-    const a: Asignacion = {
-      partidoId: pa.partidoId,
-      canchaId: pa.canchaId,
-      dia: pa.dia,
-      hora: pa.hora,
-      arbitros: refs ?? input.arbitros.slice(0, 2),
-    };
-    registrar(a, p);
+    registrar(
+      {
+        partidoId: pa.partidoId,
+        recintoId: pa.recintoId,
+        dia: pa.dia,
+        hora: pa.hora,
+        arbitros: refs ?? input.arbitros.slice(0, 2),
+      },
+      p,
+    );
     fijos.add(pa.partidoId);
   }
 
-  // 2) GREEDY most-constrained-first.
+  // Demanda por recinto (cuantos partidos lo quieren de local) -> los recintos
+  // mas disputados se agendan primero.
+  const demanda = new Map<string, number>();
+  for (const p of input.partidos)
+    demanda.set(p.recintoLocalId, (demanda.get(p.recintoLocalId) ?? 0) + 1);
+
+  // 2) GREEDY most-constrained-first: primero los de recinto forzado (local ==
+  // visita, no pueden ceder) y los de recintos mas demandados.
   const pendientes = input.partidos
     .filter((p) => !fijos.has(p.id))
-    .map((p) => ({
-      p,
-      elegibles: canchasElegibles(p.genero, input.canchas).length,
-    }))
+    .map((p) => ({ p, cands: candidatos(p, recintoPorId) }))
     .sort(
-      (a, b) =>
-        a.elegibles - b.elegibles ||
-        a.p.genero.localeCompare(b.p.genero) ||
-        a.p.categoriaId.localeCompare(b.p.categoriaId) ||
-        a.p.jornada - b.p.jornada ||
-        a.p.id.localeCompare(b.p.id),
+      (x, y) =>
+        x.cands.length - y.cands.length ||
+        (demanda.get(y.p.recintoLocalId) ?? 0) -
+          (demanda.get(x.p.recintoLocalId) ?? 0) ||
+        x.p.categoriaId.localeCompare(y.p.categoriaId) ||
+        x.p.jornada - y.p.jornada ||
+        x.p.id.localeCompare(y.p.id),
     );
 
-  for (const { p } of pendientes) {
-    const elegibles = canchasElegibles(p.genero, input.canchas);
+  for (const { p, cands } of pendientes) {
+    if (cands.length === 0) {
+      sinAsignar.push({
+        partidoId: p.id,
+        razon: "recinto-no-admite-genero",
+        detalle: `${p.genero} sin recinto candidato valido`,
+      });
+      continue;
+    }
     let mejor: { a: Asignacion; score: number } | null = null;
-
-    for (const s of input.slots) {
-      for (const c of elegibles) {
-        if (!celdaFactibleSinArbitros(estado, p, c.id, s)) continue;
+    for (const r of cands) {
+      for (const s of input.slots) {
+        if (!celdaFactibleSinArbitros(estado, p, r.id, s)) continue;
         const refs = arbitrosLibres(estado, s.dia, s.hora, input.arbitros, 2);
         if (!refs) continue;
-
         let score = horaDesirabilidad(s.hora) * 100;
+        if (r.id !== p.recintoLocalId) score -= 100000; // cesion = ultimo recurso
         if (s.dia === "sabado") score += 5;
         if (esIndeseable(s.hora)) {
           score -=
@@ -154,30 +188,20 @@ export function solve(input: SolverInput): ScheduleResult {
             ((indeseablesPorEquipo.get(p.localId) ?? 0) +
               (indeseablesPorEquipo.get(p.visitaId) ?? 0));
         }
-        if (canchaDiaUsada.has(`${c.id}|${s.dia}`)) score += 2;
-
+        if (recintoDiaUsado.has(`${r.id}|${s.dia}`)) score += 2;
         if (!mejor || score > mejor.score) {
           mejor = {
-            a: {
-              partidoId: p.id,
-              canchaId: c.id,
-              dia: s.dia,
-              hora: s.hora,
-              arbitros: refs,
-            },
+            a: { partidoId: p.id, recintoId: r.id, dia: s.dia, hora: s.hora, arbitros: refs },
             score,
           };
         }
       }
     }
-
     if (mejor) registrar(mejor.a, p);
-    else sinAsignar.push({ partidoId: p.id, ...diagnosticar(estado, p, input) });
+    else sinAsignar.push({ partidoId: p.id, ...diagnosticar(estado, p, input, cands) });
   }
 
-  // 3) BUSQUEDA LOCAL.
-  busquedaLocal(asignaciones, estado, input, partidoPorId, fijos);
-
+  busquedaLocal(asignaciones, estado, input, partidoPorId, recintoPorId, fijos);
   return { asignaciones, sinAsignar };
 }
 
@@ -185,17 +209,11 @@ function diagnosticar(
   estado: Estado,
   p: PartidoInput,
   input: SolverInput,
+  cands: RecintoInput[],
 ): { razon: RazonInfactible; detalle: string } {
-  const elegibles = canchasElegibles(p.genero, input.canchas);
-  if (elegibles.length === 0)
-    return {
-      razon: "sin-cancha-elegible-libre",
-      detalle: `${p.genero} no tiene canchas elegibles`,
-    };
-
   let bloqueado = 0;
   let equipoOcupado = 0;
-  let canchaLlena = 0;
+  let recintoLleno = 0;
   let sinArb = 0;
   for (const s of input.slots) {
     if (estado.bloqueados.has(slotKey(s.dia, s.hora))) {
@@ -209,33 +227,27 @@ function diagnosticar(
       equipoOcupado++;
       continue;
     }
-    const hayCancha = elegibles.some(
-      (c) => !estado.canchaOcupada.has(cellKey(c.id, s.dia, s.hora)),
+    const hayRecinto = cands.some(
+      (r) => !estado.recintoOcupado.has(cellKey(r.id, s.dia, s.hora)),
     );
-    if (!hayCancha) {
-      canchaLlena++;
+    if (!hayRecinto) {
+      recintoLleno++;
       continue;
     }
     if (!arbitrosLibres(estado, s.dia, s.hora, input.arbitros, 2)) sinArb++;
   }
-
-  const max = Math.max(bloqueado, equipoOcupado, canchaLlena, sinArb);
-  if (max === canchaLlena)
+  const nombres = cands.map((r) => r.nombre).join(" / ");
+  const max = Math.max(bloqueado, equipoOcupado, recintoLleno, sinArb);
+  if (max === recintoLleno)
     return {
-      razon: "sin-cancha-elegible-libre",
-      detalle: "todas las canchas elegibles ocupadas en los slots posibles",
+      razon: "recinto-saturado",
+      detalle: `recinto(s) ${nombres} sin cupo en ningun slot`,
     };
   if (max === equipoOcupado)
-    return {
-      razon: "equipo-ocupado",
-      detalle: "el equipo ya juega en cada slot libre",
-    };
+    return { razon: "equipo-ocupado", detalle: "el equipo ya juega en cada slot libre" };
   if (max === sinArb)
     return { razon: "sin-arbitros", detalle: "no quedan 2 arbitros libres" };
-  return {
-    razon: "slot-bloqueado",
-    detalle: "los slots posibles estan bloqueados",
-  };
+  return { razon: "slot-bloqueado", detalle: "los slots posibles estan bloqueados" };
 }
 
 function busquedaLocal(
@@ -243,6 +255,7 @@ function busquedaLocal(
   estado: Estado,
   input: SolverInput,
   partidoPorId: Map<string, PartidoInput>,
+  recintoPorId: Map<string, RecintoInput>,
   fijos: Set<string>,
 ) {
   const MAX_PASADAS = 3;
@@ -250,24 +263,21 @@ function busquedaLocal(
 
   for (let pasada = 0; pasada < MAX_PASADAS; pasada++) {
     let mejoro = false;
-
     for (const a of asignaciones) {
       if (fijos.has(a.partidoId)) continue;
       const p = partidoPorId.get(a.partidoId);
       if (!p) continue;
-
       const original: Asignacion = { ...a, arbitros: [...a.arbitros] };
       liberar(estado, a, p);
 
       let bestScore = -Infinity;
       let best: Asignacion = original;
-
-      for (const s of input.slots) {
-        for (const c of canchasElegibles(p.genero, input.canchas)) {
-          if (!celdaFactibleSinArbitros(estado, p, c.id, s)) continue;
+      for (const r of candidatos(p, recintoPorId)) {
+        for (const s of input.slots) {
+          if (!celdaFactibleSinArbitros(estado, p, r.id, s)) continue;
           const refs = arbitrosLibres(estado, s.dia, s.hora, input.arbitros, 2);
           if (!refs) continue;
-          a.canchaId = c.id;
+          a.recintoId = r.id;
           a.dia = s.dia;
           a.hora = s.hora;
           a.arbitros = refs;
@@ -278,19 +288,16 @@ function busquedaLocal(
           }
         }
       }
-
-      a.canchaId = best.canchaId;
+      a.recintoId = best.recintoId;
       a.dia = best.dia;
       a.hora = best.hora;
       a.arbitros = best.arbitros;
       ocupar(estado, a, p);
-
       if (bestScore > mejorGlobal + 1e-9) {
         mejorGlobal = bestScore;
         mejoro = true;
       }
     }
-
     if (!mejoro) break;
   }
 }

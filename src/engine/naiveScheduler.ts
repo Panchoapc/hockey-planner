@@ -1,23 +1,16 @@
 import type { Asignacion, ScheduleResult, SinAsignar, SolverInput } from "./types";
 
 /**
- * Scheduler NAIVE — el "antes" de la demo. Deliberadamente tonto: llena celdas
- * (cancha, slot) en orden slot-major e IGNORA casi todo:
- *   - acceso por genero (mete varones en canchas de colegio)
- *   - que un equipo no juegue dos veces a la vez
- *   - arbitros (los cicla del pool -> mismos arbitros en partidos simultaneos)
- *   - fechas bloqueadas y pre-asignados
- * Comparte el MISMO SolverInput que el solver real para poder contrastarlos.
- * Resultado esperado: grilla rota (equipos citados varias veces a la vez, todo
- * el sabado, domingo vacio, choques de arbitro y de genero).
+ * Scheduler NAIVE — el "antes" de la demo. Llena celdas (recinto, slot) en
+ * orden slot-major e IGNORA todo: localia (mete partidos en recintos ajenos),
+ * acceso por genero, doble-booking de equipo y de arbitros, bloqueos y
+ * pre-asignados. Comparte el mismo SolverInput que el solver real.
  */
 export function naiveSchedule(input: SolverInput): ScheduleResult {
-  const celdas: { canchaId: string; dia: string; hora: string }[] = [];
-  for (const s of input.slots) {
-    for (const c of input.canchas) {
-      celdas.push({ canchaId: c.id, dia: s.dia, hora: s.hora });
-    }
-  }
+  const celdas: { recintoId: string; dia: string; hora: string }[] = [];
+  for (const s of input.slots)
+    for (const r of input.recintos)
+      celdas.push({ recintoId: r.id, dia: s.dia, hora: s.hora });
 
   const asignaciones: Asignacion[] = [];
   const sinAsignar: SinAsignar[] = [];
@@ -35,7 +28,7 @@ export function naiveSchedule(input: SolverInput): ScheduleResult {
         : input.arbitros.slice(0, 2);
     asignaciones.push({
       partidoId: p.id,
-      canchaId: celda.canchaId,
+      recintoId: celda.recintoId,
       dia: celda.dia,
       hora: celda.hora,
       arbitros,

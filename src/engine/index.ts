@@ -1,8 +1,12 @@
 // Barrel del motor de scheduling (modulo TS puro, portable).
 export * from "./types";
-export { generarFixture, fixtureCategoria, type CategoriaCtx } from "./roundRobin";
+export {
+  generarFixture,
+  fixtureCategoria,
+  type CategoriaCtx,
+} from "./roundRobin";
 export { generarSlots } from "./slots";
-export { canchasElegibles, esCanchaElegible } from "./eligibility";
+export { esRecintoElegible, recintosElegibles } from "./eligibility";
 export {
   esIndeseable,
   horaDesirabilidad,

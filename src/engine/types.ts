@@ -3,16 +3,20 @@
 
 export type Genero = "VARONES" | "DAMAS";
 export type Formato = "ADULTO" | "SUB14" | "SUB12";
-export type PoolCancha = "CLUB" | "COLEGIO";
+export type Rueda = "UNICA" | "DOBLE";
 
-export interface CanchaInput {
+/** Un recinto (sede). El recurso escaso: cada recinto tiene una cancha y por
+ *  ende una capacidad de fin de semana (nro de slots). `admiteVarones` se
+ *  DERIVA: true sii algun equipo adulto masculino es local ahi. */
+export interface RecintoInput {
   id: string;
   nombre: string;
-  pool: PoolCancha;
+  ciudad: string;
+  admiteVarones: boolean;
 }
 
-/** Un enfrentamiento a agendar. Lleva el contexto de su categoria porque el
- *  solver agenda varias categorias sobre el mismo pool de canchas y arbitros. */
+/** Un partido a agendar, ya con su localia resuelta. Los candidatos de recinto
+ *  son SOLO {recintoLocalId, recintoVisitaId} (regla dura 2.b). */
 export interface PartidoInput {
   id: string;
   categoriaId: string;
@@ -21,38 +25,39 @@ export interface PartidoInput {
   localId: string;
   visitaId: string;
   jornada: number;
+  recintoLocalId: string;
+  recintoVisitaId: string;
 }
 
-/** Una franja de tiempo asignable dentro de la ventana del fin de semana. */
 export interface Slot {
   dia: string; // "sabado" | "domingo"
   hora: string; // "HH:MM" de inicio
 }
 
-/** Resultado del scheduler para un partido: cancha + slot + 2 arbitros. */
+/** Resultado del scheduler para un partido: recinto + slot + 2 arbitros. */
 export interface Asignacion {
   partidoId: string;
-  canchaId: string;
+  recintoId: string;
   dia: string;
   hora: string;
   arbitros: string[]; // exactamente 2 ids
 }
 
-/** Partido pre-asignado por TV/FEHOCH: cancha y slot fijos, no reoptimizables.
- *  Los arbitros los completa el solver si no vienen dados. */
+/** Partido pre-asignado por TV/FEHOCH: recinto y slot fijos. */
 export interface PreAsignado {
   partidoId: string;
-  canchaId: string;
+  recintoId: string;
   dia: string;
   hora: string;
 }
 
 export type RazonInfactible =
-  | "sin-cancha-elegible-libre" // ninguna cancha elegible libre en ningun slot
-  | "equipo-ocupado" // el equipo ya juega en todos los slots posibles
-  | "sin-arbitros" // no quedan 2 arbitros libres en ningun slot factible
-  | "slot-bloqueado" // los unicos slots posibles estan bloqueados
-  | "capacidad-agotada"; // no quedan celdas libres (motor naive)
+  | "recinto-saturado" // los recintos {local, visita} estan llenos en todo slot
+  | "recinto-no-admite-genero" // ningun recinto candidato admite el genero
+  | "equipo-ocupado" // el equipo ya juega en cada slot libre
+  | "sin-arbitros" // no quedan 2 arbitros libres
+  | "slot-bloqueado" // los slots posibles estan bloqueados
+  | "capacidad-agotada"; // motor naive
 
 export interface SinAsignar {
   partidoId: string;
@@ -65,18 +70,18 @@ export interface ScheduleResult {
   sinAsignar: SinAsignar[];
 }
 
-/** Input unico que comparten el motor naive y el solver real, para poder
- *  correr ambos sobre exactamente los mismos datos y comparar. */
+/** Input unico que comparten el motor naive y el solver real. */
 export interface SolverInput {
   partidos: PartidoInput[];
-  canchas: CanchaInput[];
+  recintos: RecintoInput[];
   slots: Slot[];
-  arbitros: string[]; // pool de ids de arbitros disponibles
-  bloqueos: Slot[]; // (dia,hora) no disponibles para nadie
-  preAsignados: PreAsignado[]; // TV: fijos
+  arbitros: string[];
+  bloqueos: Slot[];
+  preAsignados: PreAsignado[];
 }
 
-/** Enfrentamiento crudo del round-robin, antes de enriquecer con categoria. */
+/** Enfrentamiento crudo del round-robin, con localia ya resuelta (localId es
+ *  quien recibe). */
 export interface Enfrentamiento {
   id: string;
   localId: string;
