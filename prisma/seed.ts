@@ -53,7 +53,11 @@ async function main() {
 
   // 2) Recintos (fuente autoritativa: torneo.seed.json).
   const recintoIdPorSlug = new Map<string, string>();
-  for (const r of data.recintos) {
+  const todosRecintos = [
+    ...data.recintos.filter((r) => r.admiteVarones), // 7 de club
+    ...mapa.recintosFemeninos, // colegios femeninos separados (uno por club)
+  ];
+  for (const r of todosRecintos) {
     const rec = await prisma.recinto.create({
       data: { nombre: r.nombre, ciudad: r.ciudad, admiteVarones: r.admiteVarones },
     });
@@ -94,7 +98,7 @@ async function main() {
     totalEquipos += c.equipos.length;
   }
 
-  console.log(`Seed OK: ${cats.length} categorias, ${totalEquipos} equipos, ${data.recintos.length} recintos.`);
+  console.log(`Seed OK: ${cats.length} categorias, ${totalEquipos} equipos, ${todosRecintos.length} recintos.`);
 }
 
 main()

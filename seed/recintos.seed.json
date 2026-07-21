@@ -1,5 +1,5 @@
 {
-  "_nota": "Mapeo club -> id de recinto. Los recintos (id, nombre, ciudad, admiteVarones) viven en torneo.seed.json (fuente autoritativa). Los clubes femeninos de Santiago caen en 'colegios-stgo' (COLAPSO declarado: en la realidad son varias canchas de colegio distintas; cantidad TODO por confirmar). Casos especiales: Kolbe->ccc, Vina HC/Sporting->stm.",
+  "_nota": "Mapeo club -> id de recinto. Los recintos de club (admiteVarones) viven en torneo.seed.json. Los colegios femeninos de Santiago se modelan como recintos SEPARADOS aca (uno por club). TODO: confirmar cuantas canchas de colegio hay y cuales; los nombres son el supuesto mas razonable. Casos especiales: Kolbe->ccc, Vina HC/Sporting->stm.",
   "clubARecintoId": {
     "CCC": "ccc",
     "Manquehue": "manquehue",
@@ -10,7 +10,21 @@
     "STM": "stm",
     "Kolbe": "ccc",
     "Vina HC": "stm",
-    "Sporting": "stm"
+    "Sporting": "stm",
+    "COGS": "col-craighouse",
+    "Old Girls": "col-grangonian",
+    "Alumni": "col-alumni",
+    "Old Reds": "col-oldreds",
+    "Dunners": "col-dunalastair",
+    "Old Gabs": "col-oldgabs"
   },
-  "recintoFemeninoPorDefecto": "colegios-stgo"
+  "recintoFemeninoPorDefecto": "col-craighouse",
+  "recintosFemeninos": [
+    { "id": "col-craighouse", "nombre": "Craighouse (COGS)", "ciudad": "Santiago", "admiteVarones": false },
+    { "id": "col-grangonian", "nombre": "Old Grangonian (Old Girls)", "ciudad": "Santiago", "admiteVarones": false },
+    { "id": "col-alumni", "nombre": "Alumni", "ciudad": "Santiago", "admiteVarones": false },
+    { "id": "col-oldreds", "nombre": "Old Reds", "ciudad": "Santiago", "admiteVarones": false },
+    { "id": "col-dunalastair", "nombre": "Dunalastair (Dunners)", "ciudad": "Santiago", "admiteVarones": false },
+    { "id": "col-oldgabs", "nombre": "Old Gabs", "ciudad": "Santiago", "admiteVarones": false }
+  ]
 }

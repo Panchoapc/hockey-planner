@@ -36,12 +36,18 @@ export function ruedaDe(slug: string): Rueda {
 }
 
 export function construirRecintos(): RecintoInput[] {
-  return leer<Seed>("seed/torneo.seed.json").recintos.map((r) => ({
+  const seed = leer<Seed>("seed/torneo.seed.json");
+  const mapa = leer<MapaLocalia>("seed/recintos.seed.json");
+  const club = seed.recintos
+    .filter((r) => r.admiteVarones)
+    .map((r) => ({ id: r.id, nombre: r.nombre, ciudad: r.ciudad, admiteVarones: r.admiteVarones }));
+  const fem = mapa.recintosFemeninos.map((r) => ({
     id: r.id,
     nombre: r.nombre,
     ciudad: r.ciudad,
     admiteVarones: r.admiteVarones,
   }));
+  return [...club, ...fem];
 }
 
 export interface OpcionesInput {
