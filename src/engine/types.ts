@@ -5,9 +5,6 @@ export type Genero = "VARONES" | "DAMAS";
 export type Formato = "ADULTO" | "SUB14" | "SUB12";
 export type Rueda = "UNICA" | "DOBLE";
 
-/** Un recinto (sede). El recurso escaso: cada recinto tiene una cancha y por
- *  ende una capacidad de fin de semana (nro de slots). `admiteVarones` se
- *  DERIVA: true sii algun equipo adulto masculino es local ahi. */
 export interface RecintoInput {
   id: string;
   nombre: string;
@@ -15,8 +12,6 @@ export interface RecintoInput {
   admiteVarones: boolean;
 }
 
-/** Un partido a agendar, ya con su localia resuelta. Los candidatos de recinto
- *  son SOLO {recintoLocalId, recintoVisitaId} (regla dura 2.b). */
 export interface PartidoInput {
   id: string;
   categoriaId: string;
@@ -29,35 +24,43 @@ export interface PartidoInput {
   recintoVisitaId: string;
 }
 
+/** Un slot concreto: FECHA (ISO YYYY-MM-DD) + hora. El dia de la semana se
+ *  deriva de la fecha; no se guarda. */
 export interface Slot {
-  dia: string; // "sabado" | "domingo"
-  hora: string; // "HH:MM" de inicio
+  fecha: string;
+  hora: string;
+}
+
+/** Un fin de semana disponible del semestre (dos fechas concretas). */
+export interface FinDeSemana {
+  indice: number; // 1-based; la jornada N se juega en el finde N.
+  sabado: string;
+  domingo: string;
 }
 
 /** Resultado del scheduler para un partido: recinto + slot + 2 arbitros. */
 export interface Asignacion {
   partidoId: string;
   recintoId: string;
-  dia: string;
+  fecha: string;
   hora: string;
-  arbitros: string[]; // exactamente 2 ids
+  arbitros: string[];
 }
 
-/** Partido pre-asignado por TV/FEHOCH: recinto y slot fijos. */
 export interface PreAsignado {
   partidoId: string;
   recintoId: string;
-  dia: string;
+  fecha: string;
   hora: string;
 }
 
 export type RazonInfactible =
-  | "recinto-saturado" // los recintos {local, visita} estan llenos en todo slot
-  | "recinto-no-admite-genero" // ningun recinto candidato admite el genero
-  | "equipo-ocupado" // el equipo ya juega en cada slot libre
-  | "sin-arbitros" // no quedan 2 arbitros libres
-  | "slot-bloqueado" // los slots posibles estan bloqueados
-  | "capacidad-agotada"; // motor naive
+  | "recinto-saturado"
+  | "recinto-no-admite-genero"
+  | "equipo-ocupado"
+  | "sin-arbitros"
+  | "slot-bloqueado"
+  | "capacidad-agotada";
 
 export interface SinAsignar {
   partidoId: string;
@@ -70,21 +73,42 @@ export interface ScheduleResult {
   sinAsignar: SinAsignar[];
 }
 
-/** Input unico que comparten el motor naive y el solver real. */
+/** Input del solver de temporada. El calendario (finesDeSemana) decide EN QUE
+ *  finde va cada jornada; el solver optimiza DENTRO de cada finde. */
 export interface SolverInput {
   partidos: PartidoInput[];
   recintos: RecintoInput[];
-  slots: Slot[];
+  finesDeSemana: FinDeSemana[];
+  horas: string[]; // horas del dia (08:30..17:30)
   arbitros: string[];
-  bloqueos: Slot[];
+  bloqueos: Slot[]; // {fecha, hora} concretos (feriado, evento)
   preAsignados: PreAsignado[];
 }
 
-/** Enfrentamiento crudo del round-robin, con localia ya resuelta (localId es
- *  quien recibe). */
 export interface Enfrentamiento {
   id: string;
   localId: string;
   visitaId: string;
   jornada: number;
+}
+
+// --- Motor de alternativas (Tarea 2) ---
+
+export interface Alternativa {
+  fecha: string;
+  hora: string;
+  recintoId: string;
+  recintoNombre: string;
+  cesion: boolean; // se juega en el recinto de la visita
+  desplaza: string[]; // otros partidos que habria que mover (ideal: ninguno)
+  deltaPuntaje: number; // vs la asignacion actual (mayor = mejor)
+}
+
+export interface ResultadoAlternativas {
+  partidoId: string;
+  actual: Asignacion | null;
+  alternativas: Alternativa[];
+  sinAlternativas: boolean;
+  razon?: RazonInfactible;
+  detalle?: string;
 }

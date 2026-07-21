@@ -1,9 +1,7 @@
 import { esRecintoElegible } from "./eligibility";
+import { esSabado, slotsDeFinde } from "./calendario";
 import { contarHuecos, esIndeseable } from "./scoring";
 import type { PartidoInput, ScheduleResult, SolverInput } from "./types";
-
-// Metricas comparables entre motores (naive vs solver). Las DURAS deben dar 0
-// en el solver; el naive las viola a proposito -> ese contraste es la demo.
 
 export interface Metricas {
   total: number;
@@ -15,7 +13,7 @@ export interface Metricas {
     choquesArbitro: number;
     partidosSinDosArbitros: number;
     violacionGenero: number;
-    recintoAjeno: number; // recinto que no es del local ni de la visita
+    recintoAjeno: number;
     enSlotBloqueado: number;
     fueraDeGrilla: number;
   };
@@ -23,8 +21,9 @@ export interface Metricas {
   blandas: {
     pctHorasLindas: number;
     equidadSpread: number;
-    cesiones: number; // partidos jugados en el recinto de la visita
+    cesiones: number;
     huecos: number;
+    pctSabado: number; // balance sabado/domingo
   };
 }
 
@@ -46,20 +45,23 @@ export function calcularMetricas(
     input.partidos.map((p) => [p.id, p]),
   );
   const recintoPorId = new Map(input.recintos.map((r) => [r.id, r]));
-  const bloqueados = new Set(input.bloqueos.map((b) => `${b.dia}|${b.hora}`));
-  const grilla = new Set(input.slots.map((s) => `${s.dia}|${s.hora}`));
+  const bloqueados = new Set(input.bloqueos.map((b) => `${b.fecha}|${b.hora}`));
+  const grilla = new Set<string>();
+  for (const f of input.finesDeSemana)
+    for (const s of slotsDeFinde(f, input.horas, input.bloqueos))
+      grilla.add(`${s.fecha}|${s.hora}`);
   const a = result.asignaciones;
 
   const choquesRecinto = contarDuplicados(
-    a.map((x) => `${x.recintoId}|${x.dia}|${x.hora}`),
+    a.map((x) => `${x.recintoId}|${x.fecha}|${x.hora}`),
   );
 
   const equipoClaves: string[] = [];
   for (const x of a) {
     const p = partidoPorId.get(x.partidoId);
     if (!p) continue;
-    equipoClaves.push(`${p.localId}|${x.dia}|${x.hora}`);
-    equipoClaves.push(`${p.visitaId}|${x.dia}|${x.hora}`);
+    equipoClaves.push(`${p.localId}|${x.fecha}|${x.hora}`);
+    equipoClaves.push(`${p.visitaId}|${x.fecha}|${x.hora}`);
   }
   const choquesEquipo = contarDuplicados(equipoClaves);
 
@@ -67,7 +69,7 @@ export function calcularMetricas(
   let partidosSinDosArbitros = 0;
   for (const x of a) {
     if (x.arbitros.length !== 2) partidosSinDosArbitros++;
-    for (const arb of x.arbitros) arbClaves.push(`${arb}|${x.dia}|${x.hora}`);
+    for (const arb of x.arbitros) arbClaves.push(`${arb}|${x.fecha}|${x.hora}`);
   }
   const choquesArbitro = contarDuplicados(arbClaves);
 
@@ -84,8 +86,8 @@ export function calcularMetricas(
       recintoAjeno++;
     if (p && x.recintoId === p.recintoVisitaId && x.recintoId !== p.recintoLocalId)
       cesiones++;
-    if (bloqueados.has(`${x.dia}|${x.hora}`)) enSlotBloqueado++;
-    if (!grilla.has(`${x.dia}|${x.hora}`)) fueraDeGrilla++;
+    if (bloqueados.has(`${x.fecha}|${x.hora}`)) enSlotBloqueado++;
+    if (!grilla.has(`${x.fecha}|${x.hora}`)) fueraDeGrilla++;
   }
 
   const duras = {
@@ -102,6 +104,8 @@ export function calcularMetricas(
 
   const lindas = a.filter((x) => !esIndeseable(x.hora)).length;
   const pctHorasLindas = a.length ? Math.round((lindas / a.length) * 100) : 0;
+  const enSabado = a.filter((x) => esSabado(x.fecha)).length;
+  const pctSabado = a.length ? Math.round((enSabado / a.length) * 100) : 0;
 
   const indeseablesPorEquipo = new Map<string, number>();
   for (const p of input.partidos) {
@@ -126,6 +130,6 @@ export function calcularMetricas(
     sinAsignar: result.sinAsignar.length,
     duras,
     violacionesDurasTotal,
-    blandas: { pctHorasLindas, equidadSpread, cesiones, huecos: contarHuecos(a) },
+    blandas: { pctHorasLindas, equidadSpread, cesiones, huecos: contarHuecos(a), pctSabado },
   };
 }
