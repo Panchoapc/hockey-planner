@@ -83,7 +83,7 @@ model Partido {
   // Resultado del scheduler. Null = sin asignar (saturacion).
   recinto   Recinto? @relation(fields: [recintoId], references: [id])
   recintoId String?
-  dia       String?
+  fecha     String?
   hora      String?
   arbitros  String[] @default([])
 

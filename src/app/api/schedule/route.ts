@@ -2,36 +2,30 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
   fixtureCategoria,
-  generarSlots,
   naiveSchedule,
-  solve,
+  solveDetallado,
   calcularMetricas,
   type RecintoInput,
   type PartidoInput,
   type PreAsignado,
+  type ScheduleResult,
 } from "@/engine";
-import { DIAS, DESDE, HASTA, N_ARBITROS, BLOQUEOS } from "@/lib/torneoConfig";
+import { construirCalendario, N_ARBITROS } from "@/lib/torneoConfig";
 
 /**
  * POST /api/schedule?motor=solver|naive
- * Arma el fixture de todas las categorias con LOCALIA resuelta y corre el motor
- * elegido. La regla de genero se cumple por construccion (localia); el engine
- * la valida. La route solo orquesta Prisma <-> engine (TS puro).
+ * El calendario asigna cada jornada a un fin de semana; el solver optimiza
+ * dentro de cada finde. La regla de genero se cumple por construccion (localia).
  */
 export async function POST(req: NextRequest) {
-  const motor =
-    req.nextUrl.searchParams.get("motor") === "naive" ? "naive" : "solver";
+  const motor = req.nextUrl.searchParams.get("motor") === "naive" ? "naive" : "solver";
 
   const categorias = await prisma.categoria.findMany({
     include: { equipos: { orderBy: { nombre: "asc" } } },
     orderBy: { slug: "asc" },
   });
-  if (categorias.length === 0) {
-    return NextResponse.json(
-      { error: "No hay categorias. Corriste el seed?" },
-      { status: 404 },
-    );
-  }
+  if (categorias.length === 0)
+    return NextResponse.json({ error: "No hay categorias. Corriste el seed?" }, { status: 404 });
 
   const recintosDb = await prisma.recinto.findMany({ orderBy: { nombre: "asc" } });
   const recintos: RecintoInput[] = recintosDb.map((r) => ({
@@ -41,10 +35,8 @@ export async function POST(req: NextRequest) {
     admiteVarones: r.admiteVarones,
   }));
 
-  const bloqueMin = Math.max(...categorias.map((c) => c.bloqueMin));
-  const slots = generarSlots(bloqueMin, DIAS, DESDE, HASTA);
+  const { finesDeSemana, horas, bloqueos } = construirCalendario();
 
-  // Fixture con localia: cada equipo aporta su recinto local.
   const partidos: PartidoInput[] = categorias.flatMap((cat) => {
     const recintoPorEquipo: Record<string, string> = {};
     for (const e of cat.equipos) recintoPorEquipo[e.id] = e.recintoLocalId;
@@ -54,29 +46,30 @@ export async function POST(req: NextRequest) {
       recintoPorEquipo,
     );
   });
+  const nombrePorEquipo = new Map(categorias.flatMap((c) => c.equipos).map((e) => [e.id, e.nombre]));
   const partidoPorId = new Map(partidos.map((p) => [p.id, p]));
-  const nombrePorEquipo = new Map(
-    categorias.flatMap((c) => c.equipos).map((e) => [e.id, e.nombre]),
-  );
 
-  // TODO: demo de pin TV. Primer partido de varones a su recinto local, sabado 13:00.
+  // TODO: pin TV de ejemplo (primer varones, su finde, 13:00).
   const primerVarones = partidos.find((p) => p.genero === "VARONES");
-  const preAsignados: PreAsignado[] = primerVarones
-    ? [
-        {
-          partidoId: primerVarones.id,
-          recintoId: primerVarones.recintoLocalId,
-          dia: "sabado",
-          hora: "13:00",
-        },
-      ]
-    : [];
+  const findePin = primerVarones && finesDeSemana.find((f) => f.indice === primerVarones.jornada);
+  const preAsignados: PreAsignado[] =
+    primerVarones && findePin
+      ? [{ partidoId: primerVarones.id, recintoId: primerVarones.recintoLocalId, fecha: findePin.sabado, hora: "13:00" }]
+      : [];
 
   const arbitros = Array.from({ length: N_ARBITROS }, (_, i) => `arb-${i + 1}`);
-  const input = { partidos, recintos, slots, arbitros, bloqueos: BLOQUEOS, preAsignados };
+  const input = { partidos, recintos, finesDeSemana, horas, arbitros, bloqueos, preAsignados };
 
   const t0 = Date.now();
-  const resultado = motor === "naive" ? naiveSchedule(input) : solve(input);
+  let resultado: ScheduleResult;
+  let findesStats: { indice: number; sabado: string; ms: number }[] = [];
+  if (motor === "naive") {
+    resultado = naiveSchedule(input);
+  } else {
+    const det = solveDetallado(input);
+    resultado = det.result;
+    findesStats = det.findes.map((f) => ({ indice: f.indice, sabado: f.sabado, ms: f.ms }));
+  }
   const durationMs = Date.now() - t0;
   const metricas = calcularMetricas(resultado, input);
 
@@ -92,32 +85,42 @@ export async function POST(req: NextRequest) {
         visitaId: p.visitaId,
         jornada: p.jornada,
         recintoId: a?.recintoId ?? null,
-        dia: a?.dia ?? null,
+        fecha: a?.fecha ?? null,
         hora: a?.hora ?? null,
         arbitros: a?.arbitros ?? [],
       };
     }),
   });
 
-  // Resumen de saturacion por recinto (para el hallazgo del dominio).
-  const cargaPorRecinto = new Map<string, number>();
-  for (const a of resultado.asignaciones)
-    cargaPorRecinto.set(a.recintoId, (cargaPorRecinto.get(a.recintoId) ?? 0) + 1);
+  // Carga por recinto por finde (para el reporte del dominio).
   const nombreRecinto = new Map(recintosDb.map((r) => [r.id, r.nombre]));
+  const findeIndice = new Map(finesDeSemana.flatMap((f) => [[f.sabado, f.indice], [f.domingo, f.indice]]));
+  const cargaFinde = new Map<number, Map<string, number>>();
+  for (const a of resultado.asignaciones) {
+    const idx = findeIndice.get(a.fecha);
+    if (idx === undefined) continue;
+    const m = cargaFinde.get(idx) ?? new Map();
+    const nom = nombreRecinto.get(a.recintoId) ?? a.recintoId;
+    m.set(nom, (m.get(nom) ?? 0) + 1);
+    cargaFinde.set(idx, m);
+  }
+  const findes = [...cargaFinde.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([indice, m]) => ({
+      indice,
+      ms: findesStats.find((s) => s.indice === indice)?.ms ?? null,
+      cargaPorRecinto: Object.fromEntries([...m.entries()].sort((a, b) => b[1] - a[1])),
+    }));
 
   return NextResponse.json({
     motor,
     durationMs,
     metricas,
-    saturacion: [...cargaPorRecinto.entries()]
-      .map(([id, n]) => ({ recinto: nombreRecinto.get(id), partidos: n }))
-      .sort((a, b) => b.partidos - a.partidos),
+    findes,
     sinAsignar: resultado.sinAsignar.map((s) => {
       const p = partidoPorId.get(s.partidoId);
       return {
-        partido: p
-          ? `${nombrePorEquipo.get(p.localId)} vs ${nombrePorEquipo.get(p.visitaId)}`
-          : s.partidoId,
+        partido: p ? `${nombrePorEquipo.get(p.localId)} vs ${nombrePorEquipo.get(p.visitaId)}` : s.partidoId,
         razon: s.razon,
         detalle: s.detalle,
       };
