@@ -2,7 +2,14 @@
   "meta": {
     "fuente": "Sistemas de Torneo 2026 - FEHOCH (Federacion Chilena de Hockey sobre Cesped)",
     "alcance": "Un semestre = una rueda todos-contra-todos por categoria. Sin ascensos/descensos ni playoffs.",
-    "ventanaFinDeSemana": { "dias": ["sabado", "domingo"], "desde": "08:00", "hasta": "19:00" }
+    "ventanaFinDeSemana": {
+      "dias": [
+        "sabado",
+        "domingo"
+      ],
+      "desde": "08:00",
+      "hasta": "19:00"
+    }
   },
   "formatosPartido": {
     "adulto": {
@@ -40,79 +47,350 @@
     "prohibidoRecuperarEnNocheDiaDeSemana": true,
     "agruparPartidosDelMismoClub": true
   },
-  "cancha": { "superficie": "sintetica", "largoM": 91.4, "anchoM": 55 },
+  "cancha": {
+    "superficie": "sintetica",
+    "largoM": 91.4,
+    "anchoM": 55
+  },
   "categorias": [
     {
-      "id": "varones-primera-a", "genero": "varones", "nombre": "Primera Varones A",
-      "formato": "adulto", "poolCancha": "varones",
-      "equipos": ["CCC 1", "Manquehue 0", "Manquehue 1", "Manquehue 3", "PWCC 1", "PWCC 2", "S. Frances 1", "U. Catolica"]
+      "id": "varones-primera-a",
+      "genero": "varones",
+      "nombre": "Primera Varones A",
+      "formato": "adulto",
+      "poolCancha": "varones",
+      "equipos": [
+        "CCC 1",
+        "Manquehue 0",
+        "Manquehue 1",
+        "Manquehue 3",
+        "PWCC 1",
+        "PWCC 2",
+        "S. Frances 1",
+        "U. Catolica"
+      ]
     },
     {
-      "id": "varones-primera-b", "genero": "varones", "nombre": "Primera Varones B",
-      "formato": "adulto", "poolCancha": "varones",
-      "equipos": ["CDA", "Kolbe", "Manquehue 2", "Manquehue 4", "PWCC 3", "PWCC 4", "Vina HC", "S. Frances 2", "STM"]
+      "id": "varones-primera-b",
+      "genero": "varones",
+      "nombre": "Primera Varones B",
+      "formato": "adulto",
+      "poolCancha": "varones",
+      "equipos": [
+        "CDA",
+        "Kolbe",
+        "Manquehue 2",
+        "Manquehue 4",
+        "PWCC 3",
+        "PWCC 4",
+        "Vina HC",
+        "S. Frances 2",
+        "STM"
+      ]
     },
     {
-      "id": "damas-primera-a", "genero": "damas", "nombre": "Primera Damas A",
-      "formato": "adulto", "poolCancha": "damas",
-      "equipos": ["COGS", "Manquehue", "Alumni A", "Old Girls", "Old Reds A", "PWCC A", "U. Catolica A", "U. Catolica B"]
+      "id": "damas-primera-a",
+      "genero": "damas",
+      "nombre": "Primera Damas A",
+      "formato": "adulto",
+      "poolCancha": "damas",
+      "equipos": [
+        "COGS",
+        "Manquehue",
+        "Alumni A",
+        "Old Girls",
+        "Old Reds A",
+        "PWCC A",
+        "U. Catolica A",
+        "U. Catolica B"
+      ]
     },
     {
-      "id": "damas-primera-b", "genero": "damas", "nombre": "Primera Damas B",
-      "formato": "adulto", "poolCancha": "damas",
-      "equipos": ["Old Gabs A", "CDA", "Dunners", "CCC", "PWCC C", "S. Frances A", "Sporting", "STM"]
+      "id": "damas-primera-b",
+      "genero": "damas",
+      "nombre": "Primera Damas B",
+      "formato": "adulto",
+      "poolCancha": "damas",
+      "equipos": [
+        "Old Gabs A",
+        "CDA",
+        "Dunners",
+        "CCC",
+        "PWCC C",
+        "S. Frances A",
+        "Sporting",
+        "STM"
+      ]
     },
     {
-      "id": "damas-primera-c", "genero": "damas", "nombre": "Primera Damas C",
-      "formato": "adulto", "poolCancha": "damas",
-      "equipos": ["Alumni B", "Manquehue B", "U. Catolica C", "Kolbe", "Old Gabs B", "Old Locks", "S. Frances B", "Ubuntu"]
+      "id": "damas-primera-c",
+      "genero": "damas",
+      "nombre": "Primera Damas C",
+      "formato": "adulto",
+      "poolCancha": "damas",
+      "equipos": [
+        "Alumni B",
+        "Manquehue B",
+        "U. Catolica C",
+        "Kolbe",
+        "Old Gabs B",
+        "Old Locks",
+        "S. Frances B",
+        "Ubuntu"
+      ]
     },
     {
-      "id": "damas-primera-d", "genero": "damas", "nombre": "Primera Damas D",
-      "formato": "adulto", "poolCancha": "damas",
-      "equipos": ["Aguilas", "AIS", "All Brads", "E. Croata", "Oriente", "PWCC E", "CDU"]
+      "id": "damas-primera-d",
+      "genero": "damas",
+      "nombre": "Primera Damas D",
+      "formato": "adulto",
+      "poolCancha": "damas",
+      "equipos": [
+        "Aguilas",
+        "AIS",
+        "All Brads",
+        "E. Croata",
+        "Oriente",
+        "PWCC E",
+        "CDU"
+      ]
     },
     {
-      "id": "damas-intermedia-a", "genero": "damas", "nombre": "Intermedia Damas A",
-      "formato": "adulto", "poolCancha": "damas",
-      "equipos": ["COGS", "Manquehue C", "Alumni", "Old Girls", "Old Reds", "PWCC D", "U. Catolica A", "U. Catolica B"]
+      "id": "damas-intermedia-a",
+      "genero": "damas",
+      "nombre": "Intermedia Damas A",
+      "formato": "adulto",
+      "poolCancha": "damas",
+      "equipos": [
+        "COGS",
+        "Manquehue C",
+        "Alumni",
+        "Old Girls",
+        "Old Reds",
+        "PWCC D",
+        "U. Catolica A",
+        "U. Catolica B"
+      ]
     },
     {
-      "id": "damas-intermedia-b", "genero": "damas", "nombre": "Intermedia Damas B",
-      "formato": "adulto", "poolCancha": "damas",
-      "equipos": ["Old Gabs A", "Dunners", "Manquehue D", "PWCC B", "S. Frances", "Sporting", "STM", "CDA"]
+      "id": "damas-intermedia-b",
+      "genero": "damas",
+      "nombre": "Intermedia Damas B",
+      "formato": "adulto",
+      "poolCancha": "damas",
+      "equipos": [
+        "Old Gabs A",
+        "Dunners",
+        "Manquehue D",
+        "PWCC B",
+        "S. Frances",
+        "Sporting",
+        "STM",
+        "CDA"
+      ]
     },
     {
-      "id": "damas-sub19-a", "genero": "damas", "nombre": "Sub19 Damas A", "bloque": "A",
-      "formato": "adulto", "poolCancha": "damas",
-      "equipos": ["Alumni A", "CCC A", "CDA A", "COGS A", "Dunners A", "Manquehue A", "Old Gabs A", "Old Girls A", "Old Reds A", "PWCC A", "S. Frances A", "Sporting A", "STM A", "U. Catolica A"]
+      "id": "damas-sub19-a",
+      "genero": "damas",
+      "nombre": "Sub19 Damas A",
+      "bloque": "A",
+      "formato": "adulto",
+      "poolCancha": "damas",
+      "equipos": [
+        "Alumni A",
+        "CCC A",
+        "CDA A",
+        "COGS A",
+        "Dunners A",
+        "Manquehue A",
+        "Old Gabs A",
+        "Old Girls A",
+        "Old Reds A",
+        "PWCC A",
+        "S. Frances A",
+        "Sporting A",
+        "STM A",
+        "U. Catolica A"
+      ]
     },
     {
-      "id": "damas-sub16-a", "genero": "damas", "nombre": "Sub16 Damas A", "bloque": "A",
-      "formato": "adulto", "poolCancha": "damas",
-      "equipos": ["Alumni A", "CCC A", "CDA A", "COGS A", "Dunners A", "Manquehue A", "Old Gabs A", "Old Girls A", "Old Reds A", "PWCC A", "S. Frances A", "Sporting A", "STM A", "U. Catolica A"]
+      "id": "damas-sub16-a",
+      "genero": "damas",
+      "nombre": "Sub16 Damas A",
+      "bloque": "A",
+      "formato": "adulto",
+      "poolCancha": "damas",
+      "equipos": [
+        "Alumni A",
+        "CCC A",
+        "CDA A",
+        "COGS A",
+        "Dunners A",
+        "Manquehue A",
+        "Old Gabs A",
+        "Old Girls A",
+        "Old Reds A",
+        "PWCC A",
+        "S. Frances A",
+        "Sporting A",
+        "STM A",
+        "U. Catolica A"
+      ]
     },
     {
-      "id": "damas-sub14-a", "genero": "damas", "nombre": "Sub14 Damas A", "bloque": "A",
-      "formato": "sub14", "poolCancha": "damas",
-      "equipos": ["Alumni A", "CCC A", "CDA A", "COGS A", "Dunners A", "Manquehue A", "Old Gabs A", "Old Girls A", "Old Reds A", "PWCC A", "S. Frances A", "Sporting A", "STM A", "U. Catolica A"]
+      "id": "damas-sub14-a",
+      "genero": "damas",
+      "nombre": "Sub14 Damas A",
+      "bloque": "A",
+      "formato": "sub14",
+      "poolCancha": "damas",
+      "equipos": [
+        "Alumni A",
+        "CCC A",
+        "CDA A",
+        "COGS A",
+        "Dunners A",
+        "Manquehue A",
+        "Old Gabs A",
+        "Old Girls A",
+        "Old Reds A",
+        "PWCC A",
+        "S. Frances A",
+        "Sporting A",
+        "STM A",
+        "U. Catolica A"
+      ]
     },
     {
-      "id": "damas-sub12-ab", "genero": "damas", "nombre": "Sub12 Damas A-B", "bloque": "A",
-      "formato": "sub12", "poolCancha": "damas",
-      "equipos": ["Alumni A", "CCC A", "CDA A", "COGS A", "Dunners A", "Manquehue A", "Old Gabs A", "Old Girls A", "Old Reds A", "PWCC A", "S. Frances A", "Sporting A", "STM A", "U. Catolica A"]
+      "id": "damas-sub12-ab",
+      "genero": "damas",
+      "nombre": "Sub12 Damas A-B",
+      "bloque": "A",
+      "formato": "sub12",
+      "poolCancha": "damas",
+      "equipos": [
+        "Alumni A",
+        "CCC A",
+        "CDA A",
+        "COGS A",
+        "Dunners A",
+        "Manquehue A",
+        "Old Gabs A",
+        "Old Girls A",
+        "Old Reds A",
+        "PWCC A",
+        "S. Frances A",
+        "Sporting A",
+        "STM A",
+        "U. Catolica A"
+      ]
     }
   ],
   "categoriasMenoresResumen": {
     "nota": "Listas completas en el PDF FEHOCH; se cargan si se necesita mayor escala en el demo.",
     "conteos": {
-      "sub16-damas-b": 19, "sub14-damas-b": 17, "sub14-damas-c": 13,
-      "sub12-damas-c": 19, "sub12-damas-d1": 12, "sub12-damas-d2": 10
+      "sub16-damas-b": 19,
+      "sub14-damas-b": 17,
+      "sub14-damas-c": 13,
+      "sub12-damas-c": 19,
+      "sub12-damas-d1": 12,
+      "sub12-damas-d2": 10
     }
   },
-  "canchasAcceso": {
-    "nota": "Cantidades a confirmar. Regla: mujeres acceden a TODAS; hombres solo a canchas de club. En canchas de club, equipos masculino y femenino del mismo club compiten por el mismo horario.",
-    "poolClubMixto": { "canchas": 7, "accedeVarones": true, "accedeDamas": true },
-    "poolColegioFemenino": { "canchas": 7, "accedeVarones": false, "accedeDamas": true }
+  "reglaAccesoCancha": {
+    "regla": "Una cancha admite VARONES si y solo si su club tiene equipo adulto masculino inscrito. El resto son de acceso femenino unicamente. Las damas acceden a TODAS.",
+    "nota": "Regla DERIVADA del fixture, no un supuesto. Muchos recintos con nombre de club son colegios (COGS = Craighouse, Old Girls = Old Grangonian, Dunners = Dunalastair, STM = St. Margaret's)."
+  },
+  "recintos": [
+    {
+      "id": "manquehue",
+      "nombre": "Manquehue",
+      "ciudad": "Santiago",
+      "admiteVarones": true
+    },
+    {
+      "id": "pwcc",
+      "nombre": "Prince of Wales Country Club",
+      "ciudad": "Santiago",
+      "admiteVarones": true
+    },
+    {
+      "id": "sport-frances",
+      "nombre": "Club de Golf Sport Frances",
+      "ciudad": "Santiago",
+      "admiteVarones": true
+    },
+    {
+      "id": "uc",
+      "nombre": "U. Catolica",
+      "ciudad": "Santiago",
+      "admiteVarones": true
+    },
+    {
+      "id": "ccc",
+      "nombre": "Concepcion Country Club",
+      "ciudad": "Concepcion",
+      "admiteVarones": true
+    },
+    {
+      "id": "cda",
+      "nombre": "Club Deportivo Aleman",
+      "ciudad": "Concepcion",
+      "admiteVarones": true
+    },
+    {
+      "id": "stm",
+      "nombre": "St. Margaret's",
+      "ciudad": "Vina del Mar",
+      "admiteVarones": true
+    },
+    {
+      "id": "colegios-stgo",
+      "nombre": "Canchas de colegios (Santiago)",
+      "ciudad": "Santiago",
+      "admiteVarones": false,
+      "cantidad": "TODO: confirmar cuantas y cuales"
+    }
+  ],
+  "localia": {
+    "reglaDura": "El recinto de un partido DEBE pertenecer a uno de los dos equipos que juegan (o, si no tienen cancha propia, a su region). Nunca a un tercero.",
+    "ejemplo": "Sport Frances vs PWCC jamas se juega en Manquehue. Uno de los dos pone su cancha; si el local no puede, cede localia y se juega en la del otro — la regla se sigue cumpliendo.",
+    "implicancia": "La dimension DONDE casi se colapsa: los candidatos de recinto para un partido son {cancha del local, cancha de la visita}. El solver decide principalmente el CUANDO.",
+    "casosEspeciales": [
+      {
+        "equipo": "Kolbe (Temuco)",
+        "juegaDeLocalEn": "ccc",
+        "nota": "No tiene cancha propia; su localia esta en Concepcion."
+      },
+      {
+        "equipos": "Sporting, STM, Vina HC (Vina del Mar)",
+        "juegaDeLocalEn": "stm",
+        "nota": "Una sola cancha absorbe la localia de tres clubes en todas sus categorias. Cuello de botella severo."
+      },
+      {
+        "club": "Manquehue",
+        "nota": "Tiene 5 equipos adultos masculinos (0,1,3 en Primera A; 2,4 en Primera B) mas sus equipos femeninos, todos de local en un recinto."
+      }
+    ],
+    "excepciones": {
+      "semisYFinales": "A VECES se elige un club o recinto y se concentran ahi los partidos.",
+      "estadioNacional": "Canchas que no pertenecen a ningun equipo y las puede usar cualquiera. Se usan principalmente para semifinales y finales.",
+      "partidosTelevisados": "La FEHOCH puede definir que un partido de adultos se juegue en el Estadio Nacional por television. Esto ROMPE la regla de localia a proposito.",
+      "decisionDeDiseno": "Las excepciones NO se modelan en el schedule inicial. Se exponen como override manual del usuario: el sistema modela la regla y ofrece una via de escape explicita."
+    },
+    "pendiente": "TODO: confirmar recinto de AIS (Antofagasta).",
+    "equidadLocalia": {
+      "regla": "Cada equipo debe ser local en aproximadamente la MITAD de sus partidos. Con 14 partidos: 7/7 o 7/6. Nunca 10/4.",
+      "implicancia": "La localia NO viene fija en el fixture: es una VARIABLE DE DECISION acotada por equidad. El solver elige conjuntamente (localia, horario). Elegir localia = elegir recinto = redistribuir la contencion. Permite descomprimir Vina o Manquehue, pero solo hasta donde la equidad lo permita."
+    }
+  },
+  "arbitros": {
+    "modelo": "Mixto con fuerte centralizacion en Santiago.",
+    "implicancia": "Pool grande en Santiago, delgado en regiones. Los partidos regionales quedan restringidos por arbitros, no por cancha.",
+    "porPartido": 2
+  },
+  "capacidadRecinto": {
+    "topePractico": "No hay. Solo limita la ventana 08:00-19:00.",
+    "bloquesPorDia": "~7 con bloque de 90 min"
   }
 }
