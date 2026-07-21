@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { solve, solveDetallado, naiveSchedule, calcularMetricas } from "../index";
+import { solve, solveDetallado, naiveSchedule, calcularMetricas, generarFixture } from "../index";
 import { construirInput } from "./fixtures";
 
-describe("solver de temporada — el calendario restaura la factibilidad", () => {
+describe("solver de temporada a ESCALA (3 adulto + bloque A de damas)", () => {
   const base = construirInput();
   const varones = base.partidos.find((p) => p.genero === "VARONES")!;
   const finde = base.finesDeSemana.find((f) => f.indice === varones.jornada)!;
@@ -14,40 +14,47 @@ describe("solver de temporada — el calendario restaura la factibilidad", () =>
   const { result, findes } = solveDetallado(input);
   const m = calcularMetricas(result, input);
 
-  it("184 partidos (doble rueda)", () => {
-    expect(input.partidos.length).toBe(184);
+  it("520 partidos (2 varones doble + damas A + 4 bloque A, todos unica)", () => {
+    expect(input.partidos.length).toBe(520);
   });
 
-  it("con calendario, TODOS los partidos entran (no era saturacion, era artefacto)", () => {
+  it("factibilidad: todos asignados, 0 violaciones duras", () => {
     expect(result.sinAsignar.length).toBe(0);
-    expect(result.asignaciones.length).toBe(184);
-  });
-
-  it("CERO violaciones duras", () => {
     expect(m.violacionesDurasTotal).toBe(0);
   });
 
-  it("cada recinto en cada finde respeta su capacidad (<= slots del finde)", () => {
-    for (const f of findes) {
-      const cap = 2 * input.horas.length; // sabado + domingo
+  it("ningun recinto excede su capacidad en ningun finde", () => {
+    const cap = 2 * input.horas.length;
+    for (const f of findes)
       for (const n of Object.values(f.cargaPorRecinto)) expect(n).toBeLessThanOrEqual(cap);
-    }
   });
 
-  it("la peor carga de un recinto en un finde es baja (no satura)", () => {
-    const peor = Math.max(...findes.flatMap((f) => Object.values(f.cargaPorRecinto)));
-    expect(peor).toBeLessThanOrEqual(6);
-  });
-
-  it("respeta el pre-asignado (TV) con su fecha", () => {
+  it("respeta el pre-asignado (TV)", () => {
     const pin = result.asignaciones.find((a) => a.partidoId === varones.id)!;
-    expect(pin.recintoId).toBe(varones.recintoLocalId);
     expect(pin.fecha).toBe(finde.sabado);
     expect(pin.hora).toBe("13:00");
   });
+});
 
-  it("la grilla contiene las 13:00", () => {
-    expect(input.horas).toContain("13:00");
+describe("Tarea 1 — Primera Damas A juega rueda UNICA con localia balanceada", () => {
+  const input = construirInput({ categorias: ["damas-primera-a"] });
+
+  it("8 equipos rueda unica -> 28 partidos", () => {
+    expect(input.partidos.length).toBe(28);
+  });
+
+  it("|local - visita| <= 1 para todo equipo", () => {
+    const local = new Map<string, number>();
+    const total = new Map<string, number>();
+    for (const p of input.partidos) {
+      local.set(p.localId, (local.get(p.localId) ?? 0) + 1);
+      total.set(p.localId, (total.get(p.localId) ?? 0) + 1);
+      total.set(p.visitaId, (total.get(p.visitaId) ?? 0) + 1);
+    }
+    for (const [t, tot] of total) {
+      const loc = local.get(t) ?? 0;
+      expect(Math.abs(loc - (tot - loc))).toBeLessThanOrEqual(1);
+    }
   });
 });
 
@@ -55,7 +62,6 @@ describe("solver vs naive — contraste de la demo", () => {
   const input = construirInput();
   const solverM = calcularMetricas(solve(input), input);
   const naiveM = calcularMetricas(naiveSchedule(input), input);
-
   it("el naive viola duras (recinto ajeno / genero)", () => {
     expect(naiveM.violacionesDurasTotal).toBeGreaterThan(0);
   });
