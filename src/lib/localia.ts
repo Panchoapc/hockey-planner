@@ -1,10 +1,10 @@
 // Preparacion de datos de localia (fuera del engine puro): mapea equipos a
-// recintos y deriva que recintos admiten varones. Lo usan el seed y los tests.
-import type { Genero } from "@/engine";
+// recintos. Los recintos (con admiteVarones explicito) viven en
+// torneo.seed.json. Lo usan el seed y los tests.
 
-export interface RecintoCatalogo {
-  recintos: { nombre: string; ciudad: string }[];
-  clubARecinto: Record<string, string>;
+export interface MapaLocalia {
+  clubARecintoId: Record<string, string>;
+  recintoFemeninoPorDefecto: string;
 }
 
 /** Club de un equipo: quita sufijo numerico o de una sola letra.
@@ -13,27 +13,9 @@ export function clubDeEquipo(nombreEquipo: string): string {
   return nombreEquipo.replace(/\s+([0-9]+|[A-Z])$/, "").trim();
 }
 
-export function recintoDeEquipo(
-  nombreEquipo: string,
-  clubARecinto: Record<string, string>,
-): string {
+/** Recinto (id) donde el equipo es local. Los clubes sin entrada explicita
+ *  (colegios femeninos) caen en el recinto femenino por defecto. */
+export function recintoDeEquipo(nombreEquipo: string, mapa: MapaLocalia): string {
   const club = clubDeEquipo(nombreEquipo);
-  const r = clubARecinto[club];
-  if (!r)
-    throw new Error(
-      `Sin recinto para "${nombreEquipo}" (club "${club}"). TODO: agregar a clubARecinto.`,
-    );
-  return r;
-}
-
-/** admiteVarones DERIVADO: un recinto admite varones sii algun equipo adulto
- *  masculino es local ahi. */
-export function recintosQueAdmitenVarones(
-  equipos: { nombre: string; genero: Genero }[],
-  clubARecinto: Record<string, string>,
-): Set<string> {
-  const set = new Set<string>();
-  for (const e of equipos)
-    if (e.genero === "VARONES") set.add(recintoDeEquipo(e.nombre, clubARecinto));
-  return set;
+  return mapa.clubARecintoId[club] ?? mapa.recintoFemeninoPorDefecto;
 }
