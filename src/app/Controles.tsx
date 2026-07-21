@@ -9,20 +9,27 @@ interface Metricas {
   sinAsignar: number;
   violacionesDurasTotal: number;
   duras: {
-    choquesCancha: number;
+    choquesRecinto: number;
     choquesEquipo: number;
     choquesArbitro: number;
     partidosSinDosArbitros: number;
     violacionGenero: number;
+    recintoAjeno: number;
     enSlotBloqueado: number;
     fueraDeGrilla: number;
   };
-  blandas: { pctHorasLindas: number; equidadSpread: number; huecos: number };
+  blandas: {
+    pctHorasLindas: number;
+    equidadSpread: number;
+    cesiones: number;
+    huecos: number;
+  };
 }
 interface Respuesta {
   motor: string;
   durationMs: number;
   metricas: Metricas;
+  saturacion: { recinto: string; partidos: number }[];
   sinAsignar: { partido: string; razon: string; detalle?: string }[];
 }
 
@@ -77,6 +84,7 @@ export function Controles() {
 function Panel({ res }: { res: Respuesta }) {
   const m = res.metricas;
   const ok = m.violacionesDurasTotal === 0;
+  const saturados = res.saturacion.slice(0, 4);
   return (
     <div className="mt-4 rounded-lg border border-gray-200 p-4 text-sm">
       <div className="mb-3 flex items-center gap-2">
@@ -90,43 +98,51 @@ function Panel({ res }: { res: Respuesta }) {
           {res.motor === "solver" ? "SOLVER" : "NAIF"}
         </span>
         <span className="text-gray-500">
-          {m.asignados}/{m.total} agendados · {res.durationMs} ms
+          {m.asignados}/{m.total} agendados · {m.sinAsignar} sin cupo · {res.durationMs} ms
         </span>
       </div>
 
       <div className="grid grid-cols-2 gap-x-6 gap-y-1 sm:grid-cols-4">
-        <Metrica
-          etiqueta="Violaciones duras"
-          valor={m.violacionesDurasTotal}
-          bueno={ok}
-          malo={!ok}
-        />
+        <Metrica etiqueta="Violaciones duras" valor={m.violacionesDurasTotal} bueno={ok} malo={!ok} />
         <Metrica etiqueta="% horas lindas" valor={`${m.blandas.pctHorasLindas}%`} />
-        <Metrica etiqueta="Equidad (spread)" valor={m.blandas.equidadSpread} />
+        <Metrica etiqueta="Cesiones de localia" valor={m.blandas.cesiones} />
         <Metrica etiqueta="Huecos de cancha" valor={m.blandas.huecos} />
       </div>
+
+      {saturados.length > 0 && (
+        <div className="mt-3">
+          <div className="text-xs text-gray-500">Recintos mas cargados</div>
+          <div className="mt-1 flex flex-wrap gap-2">
+            {saturados.map((s) => (
+              <span key={s.recinto} className="rounded bg-gray-100 px-2 py-0.5 text-xs">
+                {s.recinto}: <b>{s.partidos}</b>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       <details className="mt-3">
         <summary className="cursor-pointer text-xs text-gray-500">
           Desglose de restricciones duras
         </summary>
         <ul className="mt-2 grid grid-cols-2 gap-x-6 gap-y-0.5 text-xs text-gray-600 sm:grid-cols-3">
-          <li>Choques de cancha: {m.duras.choquesCancha}</li>
+          <li>Choques de recinto: {m.duras.choquesRecinto}</li>
           <li>Equipo 2 veces a la vez: {m.duras.choquesEquipo}</li>
           <li>Arbitro 2 veces a la vez: {m.duras.choquesArbitro}</li>
-          <li>Partidos sin 2 arbitros: {m.duras.partidosSinDosArbitros}</li>
-          <li>Varones en colegio: {m.duras.violacionGenero}</li>
+          <li>Recinto ajeno (ni local ni visita): {m.duras.recintoAjeno}</li>
+          <li>Varones en recinto no apto: {m.duras.violacionGenero}</li>
           <li>En slot bloqueado: {m.duras.enSlotBloqueado}</li>
         </ul>
       </details>
 
       {res.sinAsignar.length > 0 && (
-        <details className="mt-2" open>
-          <summary className="cursor-pointer text-xs font-medium text-red-600">
-            {res.sinAsignar.length} sin agendar (por que)
+        <details className="mt-2">
+          <summary className="cursor-pointer text-xs font-medium text-amber-700">
+            {res.sinAsignar.length} sin cupo (por que)
           </summary>
           <ul className="mt-2 space-y-0.5 text-xs text-gray-600">
-            {res.sinAsignar.slice(0, 10).map((s, i) => (
+            {res.sinAsignar.slice(0, 12).map((s, i) => (
               <li key={i}>
                 {s.partido} — <b>{s.razon}</b>
                 {s.detalle ? `: ${s.detalle}` : ""}

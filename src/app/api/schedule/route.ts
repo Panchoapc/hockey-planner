@@ -6,7 +6,7 @@ import {
   naiveSchedule,
   solve,
   calcularMetricas,
-  type CanchaInput,
+  type RecintoInput,
   type PartidoInput,
   type PreAsignado,
 } from "@/engine";
@@ -14,9 +14,9 @@ import { DIAS, DESDE, HASTA, N_ARBITROS, BLOQUEOS } from "@/lib/torneoConfig";
 
 /**
  * POST /api/schedule?motor=solver|naive
- * Arma el fixture de TODAS las categorias, corre el motor elegido sobre el
- * mismo input y persiste el resultado. La regla de acceso por genero ya NO
- * vive aca: es responsabilidad del engine (unica fuente de verdad).
+ * Arma el fixture de todas las categorias con LOCALIA resuelta y corre el motor
+ * elegido. La regla de genero se cumple por construccion (localia); el engine
+ * la valida. La route solo orquesta Prisma <-> engine (TS puro).
  */
 export async function POST(req: NextRequest) {
   const motor =
@@ -33,54 +33,54 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const canchasDb = await prisma.cancha.findMany({ orderBy: { nombre: "asc" } });
-  const canchas: CanchaInput[] = canchasDb.map((c) => ({
-    id: c.id,
-    nombre: c.nombre,
-    pool: c.pool,
+  const recintosDb = await prisma.recinto.findMany({ orderBy: { nombre: "asc" } });
+  const recintos: RecintoInput[] = recintosDb.map((r) => ({
+    id: r.id,
+    nombre: r.nombre,
+    ciudad: r.ciudad,
+    admiteVarones: r.admiteVarones,
   }));
 
-  // Todas las categorias de hoy son adulto (bloque uniforme). TODO: duraciones
-  // mixtas (Sub14/Sub12) requieren varias grillas; fuera de alcance del Dia 1.
   const bloqueMin = Math.max(...categorias.map((c) => c.bloqueMin));
   const slots = generarSlots(bloqueMin, DIAS, DESDE, HASTA);
 
-  const partidos: PartidoInput[] = categorias.flatMap((cat) =>
-    fixtureCategoria(
-      { id: cat.id, genero: cat.genero, bloqueMin: cat.bloqueMin },
+  // Fixture con localia: cada equipo aporta su recinto local.
+  const partidos: PartidoInput[] = categorias.flatMap((cat) => {
+    const recintoPorEquipo: Record<string, string> = {};
+    for (const e of cat.equipos) recintoPorEquipo[e.id] = e.recintoLocalId;
+    return fixtureCategoria(
+      { id: cat.id, genero: cat.genero, bloqueMin: cat.bloqueMin, rueda: cat.rueda },
       cat.equipos.map((e) => e.id),
-    ),
-  );
+      recintoPorEquipo,
+    );
+  });
   const partidoPorId = new Map(partidos.map((p) => [p.id, p]));
   const nombrePorEquipo = new Map(
     categorias.flatMap((c) => c.equipos).map((e) => [e.id, e.nombre]),
   );
 
-  // TODO: demo de pre-asignado por TV. Pin del primer partido de varones a una
-  // cancha de club, sabado 12:30. En prod vendria del input real de FEHOCH.
-  const canchaClub = canchasDb.find((c) => c.pool === "CLUB");
+  // TODO: demo de pin TV. Primer partido de varones a su recinto local, sabado 13:00.
   const primerVarones = partidos.find((p) => p.genero === "VARONES");
-  const preAsignados: PreAsignado[] =
-    canchaClub && primerVarones
-      ? [
-          {
-            partidoId: primerVarones.id,
-            canchaId: canchaClub.id,
-            dia: "sabado",
-            hora: "12:30",
-          },
-        ]
-      : [];
+  const preAsignados: PreAsignado[] = primerVarones
+    ? [
+        {
+          partidoId: primerVarones.id,
+          recintoId: primerVarones.recintoLocalId,
+          dia: "sabado",
+          hora: "13:00",
+        },
+      ]
+    : [];
 
   const arbitros = Array.from({ length: N_ARBITROS }, (_, i) => `arb-${i + 1}`);
-  const input = { partidos, canchas, slots, arbitros, bloqueos: BLOQUEOS, preAsignados };
+  const input = { partidos, recintos, slots, arbitros, bloqueos: BLOQUEOS, preAsignados };
 
   const t0 = Date.now();
   const resultado = motor === "naive" ? naiveSchedule(input) : solve(input);
   const durationMs = Date.now() - t0;
   const metricas = calcularMetricas(resultado, input);
 
-  // Persistencia: reemplaza todos los partidos con el resultado.
+  // Persistencia.
   const asigPorId = new Map(resultado.asignaciones.map((a) => [a.partidoId, a]));
   await prisma.partido.deleteMany();
   await prisma.partido.createMany({
@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
         localId: p.localId,
         visitaId: p.visitaId,
         jornada: p.jornada,
-        canchaId: a?.canchaId ?? null,
+        recintoId: a?.recintoId ?? null,
         dia: a?.dia ?? null,
         hora: a?.hora ?? null,
         arbitros: a?.arbitros ?? [],
@@ -99,10 +99,19 @@ export async function POST(req: NextRequest) {
     }),
   });
 
+  // Resumen de saturacion por recinto (para el hallazgo del dominio).
+  const cargaPorRecinto = new Map<string, number>();
+  for (const a of resultado.asignaciones)
+    cargaPorRecinto.set(a.recintoId, (cargaPorRecinto.get(a.recintoId) ?? 0) + 1);
+  const nombreRecinto = new Map(recintosDb.map((r) => [r.id, r.nombre]));
+
   return NextResponse.json({
     motor,
     durationMs,
     metricas,
+    saturacion: [...cargaPorRecinto.entries()]
+      .map(([id, n]) => ({ recinto: nombreRecinto.get(id), partidos: n }))
+      .sort((a, b) => b.partidos - a.partidos),
     sinAsignar: resultado.sinAsignar.map((s) => {
       const p = partidoPorId.get(s.partidoId);
       return {

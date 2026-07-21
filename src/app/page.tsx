@@ -5,17 +5,18 @@ import { Controles } from "./Controles";
 
 export const dynamic = "force-dynamic";
 
-type PartidoCelda = {
-  local: { nombre: string };
+type Celda = {
+  recintoId: string | null;
+  local: { nombre: string; recintoLocalId: string };
   visita: { nombre: string };
   categoria: { genero: string; nombre: string };
 };
 
 export default async function Home() {
-  let canchas, partidos, categorias, bloqueMin;
+  let recintos, partidos, categorias, bloqueMin;
   try {
-    [canchas, categorias] = await Promise.all([
-      prisma.cancha.findMany({ orderBy: { nombre: "asc" } }),
+    [recintos, categorias] = await Promise.all([
+      prisma.recinto.findMany({ orderBy: [{ ciudad: "asc" }, { nombre: "asc" }] }),
       prisma.categoria.findMany(),
     ]);
     partidos = await prisma.partido.findMany({
@@ -31,35 +32,39 @@ export default async function Home() {
     );
   }
 
-  if (categorias.length === 0) {
+  if (categorias.length === 0)
     return (
       <Aviso titulo="Sin datos">
         Corre <code>npm run db:seed</code> y recarga.
       </Aviso>
     );
-  }
 
   const slots = generarSlots(bloqueMin, DIAS, DESDE, HASTA);
   const horas = [...new Set(slots.map((s) => s.hora))];
   const bloqueados = new Set(BLOQUEOS.map((b) => `${b.dia}|${b.hora}`));
 
-  const porCelda = new Map<string, PartidoCelda>(
+  const porCelda = new Map<string, Celda>(
     partidos
-      .filter((p) => p.canchaId && p.dia && p.hora)
-      .map((p) => [`${p.canchaId}|${p.dia}|${p.hora}`, p]),
+      .filter((p) => p.recintoId && p.dia && p.hora)
+      .map((p) => [`${p.recintoId}|${p.dia}|${p.hora}`, p]),
   );
-  const asignados = partidos.filter((p) => p.canchaId).length;
+  const asignados = partidos.filter((p) => p.recintoId).length;
+  const sinAsignar = partidos.length - asignados;
 
   return (
     <main className="mx-auto max-w-[1500px] px-6 py-8">
       <header className="mb-6">
         <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">
-          Scheduler FEHOCH · Dia 1 (solver real)
+          Scheduler FEHOCH · Dia 2 (recintos y localia)
         </p>
-        <h1 className="mt-1 text-2xl font-bold">Calendario del semestre</h1>
+        <h1 className="mt-1 text-2xl font-bold">Calendario por recinto</h1>
         <p className="mt-1 text-sm text-gray-600">
           {categorias.length} categorias · {partidos.length} partidos ·{" "}
-          {asignados} agendados · {canchas.length} canchas
+          {asignados} agendados ·{" "}
+          <span className={sinAsignar > 0 ? "font-semibold text-amber-700" : ""}>
+            {sinAsignar} sin cupo
+          </span>{" "}
+          · {recintos.length} recintos
         </p>
         <div className="mt-4">
           <Controles />
@@ -68,8 +73,7 @@ export default async function Home() {
 
       {partidos.length === 0 ? (
         <p className="rounded-md border border-dashed border-gray-300 p-6 text-sm text-gray-500">
-          Todavia no hay calendario. Toca <b>Motor real (solver)</b> o{" "}
-          <b>Naif</b> para comparar.
+          Todavia no hay calendario. Toca <b>Motor real (solver)</b> o <b>Naif</b>.
         </p>
       ) : (
         DIAS.map((dia) => (
@@ -77,7 +81,7 @@ export default async function Home() {
             key={dia}
             dia={dia}
             horas={horas}
-            canchas={canchas}
+            recintos={recintos}
             porCelda={porCelda}
             bloqueados={bloqueados}
           />
@@ -90,27 +94,25 @@ export default async function Home() {
 function Grilla({
   dia,
   horas,
-  canchas,
+  recintos,
   porCelda,
   bloqueados,
 }: {
   dia: string;
   horas: string[];
-  canchas: { id: string; nombre: string }[];
-  porCelda: Map<string, PartidoCelda>;
+  recintos: { id: string; nombre: string; ciudad: string; admiteVarones: boolean }[];
+  porCelda: Map<string, Celda>;
   bloqueados: Set<string>;
 }) {
   return (
     <section className="mb-8">
-      <h2 className="mb-2 text-sm font-semibold capitalize text-gray-700">
-        {dia}
-      </h2>
+      <h2 className="mb-2 text-sm font-semibold capitalize text-gray-700">{dia}</h2>
       <div className="overflow-x-auto rounded-lg border border-gray-200">
         <table className="min-w-full border-collapse text-xs">
           <thead>
             <tr className="bg-gray-50">
               <th className="sticky left-0 z-10 border-b border-r border-gray-200 bg-gray-50 px-3 py-2 text-left font-semibold">
-                Cancha
+                Recinto
               </th>
               {horas.map((h) => (
                 <th
@@ -127,14 +129,16 @@ function Grilla({
             </tr>
           </thead>
           <tbody>
-            {canchas.map((c) => (
-              <tr key={c.id} className="even:bg-gray-50/40">
-                <td className="sticky left-0 z-10 border-r border-gray-200 bg-white px-3 py-1.5 font-medium whitespace-nowrap">
-                  {c.nombre}
+            {recintos.map((r) => (
+              <tr key={r.id} className="even:bg-gray-50/40">
+                <td className="sticky left-0 z-10 border-r border-gray-200 bg-white px-3 py-1.5 whitespace-nowrap">
+                  <span className="font-medium">{r.nombre}</span>
+                  <span className="ml-1 text-[10px] text-gray-400">{r.ciudad}</span>
                 </td>
                 {horas.map((h) => {
                   const bloq = bloqueados.has(`${dia}|${h}`);
-                  const p = porCelda.get(`${c.id}|${dia}|${h}`);
+                  const p = porCelda.get(`${r.id}|${dia}|${h}`);
+                  const cesion = p ? p.recintoId !== p.local.recintoLocalId : false;
                   return (
                     <td
                       key={h}
@@ -144,16 +148,17 @@ function Grilla({
                     >
                       {p ? (
                         <span
+                          title={`${p.categoria.nombre}${cesion ? " · cesion de localia" : ""}`}
                           className={`inline-block rounded px-1.5 py-0.5 font-medium ${
                             p.categoria.genero === "VARONES"
                               ? "bg-sky-100 text-sky-900"
                               : "bg-fuchsia-100 text-fuchsia-900"
-                          }`}
-                          title={p.categoria.nombre}
+                          } ${cesion ? "ring-1 ring-amber-400" : ""}`}
                         >
                           {p.local.nombre}
                           <span className="opacity-50"> v </span>
                           {p.visita.nombre}
+                          {cesion && <span className="text-amber-600"> ⇄</span>}
                         </span>
                       ) : (
                         <span className="text-gray-300">{bloq ? "" : "·"}</span>
@@ -170,13 +175,7 @@ function Grilla({
   );
 }
 
-function Aviso({
-  titulo,
-  children,
-}: {
-  titulo: string;
-  children: React.ReactNode;
-}) {
+function Aviso({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
     <main className="mx-auto max-w-2xl px-6 py-16">
       <h1 className="text-xl font-bold">{titulo}</h1>
