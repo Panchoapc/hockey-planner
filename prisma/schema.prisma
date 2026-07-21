@@ -83,6 +83,7 @@ model Partido {
   canchaId String?
   dia      String?
   hora     String?
+  arbitros String[] @default([])
 
   @@index([categoriaId])
 }
