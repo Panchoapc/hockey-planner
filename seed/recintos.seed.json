@@ -1,0 +1,32 @@
+{
+  "_nota": "admiteVarones se DERIVA (true sii un equipo adulto masculino es local ahi). Ciudad de COGS/Old Girls/Alumni/Old Reds = supuesto TODO. Recinto de AIS (Antofagasta) pendiente. Colegios femeninos exactos por confirmar (2.b).",
+  "recintos": [
+    { "nombre": "Manquehue", "ciudad": "Santiago" },
+    { "nombre": "PWCC", "ciudad": "Santiago" },
+    { "nombre": "Sport Frances", "ciudad": "Santiago" },
+    { "nombre": "U. Catolica", "ciudad": "Santiago" },
+    { "nombre": "CCC", "ciudad": "Concepcion" },
+    { "nombre": "CDA", "ciudad": "Concepcion" },
+    { "nombre": "STM", "ciudad": "Vina del Mar" },
+    { "nombre": "COGS", "ciudad": "Santiago" },
+    { "nombre": "Old Girls", "ciudad": "Santiago" },
+    { "nombre": "Alumni", "ciudad": "Santiago" },
+    { "nombre": "Old Reds", "ciudad": "Santiago" }
+  ],
+  "clubARecinto": {
+    "CCC": "CCC",
+    "Manquehue": "Manquehue",
+    "PWCC": "PWCC",
+    "S. Frances": "Sport Frances",
+    "U. Catolica": "U. Catolica",
+    "CDA": "CDA",
+    "Kolbe": "CCC",
+    "Vina HC": "STM",
+    "STM": "STM",
+    "Sporting": "STM",
+    "COGS": "COGS",
+    "Old Girls": "Old Girls",
+    "Alumni": "Alumni",
+    "Old Reds": "Old Reds"
+  }
+}

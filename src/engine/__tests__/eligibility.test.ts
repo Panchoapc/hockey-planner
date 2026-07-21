@@ -1,18 +1,24 @@
 import { describe, it, expect } from "vitest";
-import { canchasElegibles } from "../index";
-import { construirCanchas } from "./fixtures";
+import { esRecintoElegible, recintosElegibles } from "../index";
+import { construirRecintos } from "./fixtures";
 
-describe("acceso por genero", () => {
-  const canchas = construirCanchas();
+describe("acceso por genero (invariante)", () => {
+  const recintos = construirRecintos();
 
-  it("varones: solo canchas CLUB", () => {
-    const e = canchasElegibles("VARONES", canchas);
-    expect(e.length).toBe(7);
-    expect(e.every((c) => c.pool === "CLUB")).toBe(true);
+  it("varones: solo recintos que admiten varones", () => {
+    const e = recintosElegibles("VARONES", recintos);
+    expect(e.length).toBeGreaterThan(0);
+    expect(e.every((r) => r.admiteVarones)).toBe(true);
   });
 
-  it("damas: todas las canchas", () => {
-    const e = canchasElegibles("DAMAS", canchas);
-    expect(e.length).toBe(14);
+  it("damas: todos los recintos", () => {
+    expect(recintosElegibles("DAMAS", recintos).length).toBe(recintos.length);
+  });
+
+  it("Manquehue admite varones; COGS (colegio) no", () => {
+    const man = recintos.find((r) => r.nombre === "Manquehue")!;
+    const cogs = recintos.find((r) => r.nombre === "COGS")!;
+    expect(esRecintoElegible("VARONES", man)).toBe(true);
+    expect(esRecintoElegible("VARONES", cogs)).toBe(false);
   });
 });
