@@ -12,11 +12,11 @@ export function SelectorFinde({
   const router = useRouter();
   return (
     <div className="mb-5 flex items-center gap-2">
-      <label className="text-sm font-medium text-gray-700">Fin de semana:</label>
+      <label className="text-sm font-medium text-ink">Fin de semana:</label>
       <select
         value={actual}
         onChange={(e) => router.push(`/?finde=${e.target.value}`)}
-        className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+        className="rounded-md border border-line bg-surface px-3 py-1.5 text-sm text-ink"
       >
         {findes.map((f) => (
           <option key={f.indice} value={f.indice}>
@@ -24,7 +24,7 @@ export function SelectorFinde({
           </option>
         ))}
       </select>
-      <span className="text-xs text-gray-400">de {findes.length}</span>
+      <span className="text-xs text-muted">de {findes.length}</span>
     </div>
   );
 }

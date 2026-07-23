@@ -32,7 +32,6 @@ export default async function Home({
   const { input, nombrePorEquipo, recintoNombre } = bundle;
   const finde = input.finesDeSemana.find((f) => f.indice === findeSel) ?? input.finesDeSemana[0];
 
-  // Asignaciones actuales (engine-id) desde la DB.
   const asignaciones: Asignacion[] = dbPartidos
     .filter((p) => p.recintoId && p.fecha && p.hora)
     .map((p) => ({
@@ -51,7 +50,6 @@ export default async function Home({
   );
   const asignados = dbPartidos.filter((p) => p.recintoId).length;
 
-  // Panel de alternativas (server-side, sin red) para el partido seleccionado.
   let panelAlt: React.ReactNode = null;
   if (sp.partido) {
     const p = bundle.partidoPorId.get(sp.partido);
@@ -65,10 +63,10 @@ export default async function Home({
       };
       const r = proponerAlternativas(sp.partido, asignaciones, input);
       panelAlt = (
-        <div className="mb-6 rounded-lg border border-sky-200 bg-sky-50/40 p-4 text-sm">
-          <p className="font-semibold">{ctx.local} vs {ctx.visita}</p>
-          <p className="mt-1 text-gray-700">{explicarAsignacion(a, ctx)}</p>
-          <pre className="mt-2 whitespace-pre-wrap font-sans text-gray-700">
+        <div className="mb-6 rounded-lg border border-brand/30 bg-tint/60 p-4 text-sm">
+          <p className="font-semibold text-brand">{ctx.local} vs {ctx.visita}</p>
+          <p className="mt-1 text-ink">{explicarAsignacion(a, ctx)}</p>
+          <pre className="mt-2 whitespace-pre-wrap font-sans text-ink">
             {explicarAlternativas(r, ctx)}
           </pre>
         </div>
@@ -79,11 +77,11 @@ export default async function Home({
   return (
     <main className="mx-auto max-w-[1500px] px-6 py-8">
       <header className="mb-5">
-        <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">
-          Scheduler FEHOCH · Dia 3 (calendario del semestre)
+        <p className="text-xs font-semibold uppercase tracking-wide text-brand">
+          Scheduler FEHOCH · calendario del semestre
         </p>
-        <h1 className="mt-1 text-2xl font-bold">Calendario por fin de semana</h1>
-        <p className="mt-1 text-sm text-gray-600">
+        <h1 className="mt-1 text-2xl font-bold text-ink">Calendario por fin de semana</h1>
+        <p className="mt-1 text-sm text-muted">
           {dbPartidos.length} partidos · {asignados} agendados · {input.finesDeSemana.length} fines de semana
         </p>
         <div className="mt-4">
@@ -92,7 +90,7 @@ export default async function Home({
       </header>
 
       {dbPartidos.length === 0 ? (
-        <p className="rounded-md border border-dashed border-gray-300 p-6 text-sm text-gray-500">
+        <p className="rounded-md border border-dashed border-line-soft p-6 text-sm text-muted">
           Todavia no hay calendario. Toca <b>Motor real (solver)</b> o <b>Naif</b>.
         </p>
       ) : (
@@ -104,14 +102,7 @@ export default async function Home({
           {panelAlt}
           {finde &&
             [finde.sabado, finde.domingo].map((fecha) => (
-              <Grilla
-                key={fecha}
-                fecha={fecha}
-                horas={horas}
-                recintos={recintos}
-                porCelda={porCelda}
-                finde={findeSel}
-              />
+              <Grilla key={fecha} fecha={fecha} horas={horas} recintos={recintos} porCelda={porCelda} finde={findeSel} />
             ))}
         </>
       )}
@@ -135,43 +126,43 @@ function Grilla({
   const dia = new Date(fecha + "T00:00:00Z").getUTCDay() === 6 ? "sabado" : "domingo";
   return (
     <section className="mb-8">
-      <h2 className="mb-2 text-sm font-semibold text-gray-700">
-        <span className="capitalize">{dia}</span> <span className="text-gray-400">{fecha}</span>
+      <h2 className="mb-2 text-sm font-semibold text-ink">
+        <span className="capitalize">{dia}</span> <span className="text-muted">{fecha}</span>
       </h2>
-      <div className="overflow-x-auto rounded-lg border border-gray-200">
+      <div className="overflow-x-auto rounded-lg border border-line">
         <table className="min-w-full border-collapse text-xs">
           <thead>
-            <tr className="bg-gray-50">
-              <th className="sticky left-0 z-10 border-b border-r border-gray-200 bg-gray-50 px-3 py-2 text-left font-semibold">Recinto</th>
+            <tr className="bg-tint">
+              <th className="sticky left-0 z-10 border-b border-r border-line bg-tint px-3 py-2 text-left font-semibold text-ink">Recinto</th>
               {horas.map((h) => (
-                <th key={h} className="border-b border-l border-gray-200 px-2 py-2 text-center font-medium text-gray-600">{h}</th>
+                <th key={h} className="border-b border-l border-line px-2 py-2 text-center font-medium text-muted">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {recintos.map((r) => (
-              <tr key={r.id} className="even:bg-gray-50/40">
-                <td className="sticky left-0 z-10 border-r border-gray-200 bg-white px-3 py-1.5 whitespace-nowrap">
+              <tr key={r.id} className="even:bg-tint/40">
+                <td className="sticky left-0 z-10 border-r border-line bg-surface px-3 py-1.5 whitespace-nowrap text-ink">
                   <span className="font-medium">{r.nombre}</span>
-                  <span className="ml-1 text-[10px] text-gray-400">{r.ciudad}</span>
+                  <span className="ml-1 text-[10px] text-muted">{r.ciudad}</span>
                 </td>
                 {horas.map((h) => {
                   const p = porCelda.get(`${r.id}|${fecha}|${h}`);
                   const cesion = p ? p.recintoId !== p.local.recintoLocalId : false;
                   const eid = p ? `${p.categoriaId}__${p.localId}__vs__${p.visitaId}__j${p.jornada}` : "";
                   return (
-                    <td key={h} className="border-l border-t border-gray-100 px-1.5 py-1 text-center align-middle">
+                    <td key={h} className="border-l border-t border-line/60 px-1.5 py-1 text-center align-middle">
                       {p ? (
                         <a
                           href={`/?finde=${finde}&partido=${encodeURIComponent(eid)}`}
                           title={`${p.categoria.nombre}${cesion ? " · cesion" : ""} — ver alternativas`}
-                          className={`inline-block rounded px-1.5 py-0.5 font-medium hover:underline ${p.categoria.genero === "VARONES" ? "bg-sky-100 text-sky-900" : "bg-fuchsia-100 text-fuchsia-900"} ${cesion ? "ring-1 ring-amber-400" : ""}`}
+                          className={`inline-block rounded px-1.5 py-0.5 font-medium hover:underline ${p.categoria.genero === "VARONES" ? "bg-varones text-varones-ink" : "bg-damas text-damas-ink"} ${cesion ? "ring-1 ring-warm" : ""}`}
                         >
                           {p.local.nombre}<span className="opacity-50"> v </span>{p.visita.nombre}
-                          {cesion && <span className="text-amber-600"> ⇄</span>}
+                          {cesion && <span className="text-warm"> ⇄</span>}
                         </a>
                       ) : (
-                        <span className="text-gray-300">·</span>
+                        <span className="text-line-soft">·</span>
                       )}
                     </td>
                   );
@@ -188,8 +179,8 @@ function Grilla({
 function Aviso({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
     <main className="mx-auto max-w-2xl px-6 py-16">
-      <h1 className="text-xl font-bold">{titulo}</h1>
-      <p className="mt-2 text-sm text-gray-600">{children}</p>
+      <h1 className="text-xl font-bold text-ink">{titulo}</h1>
+      <p className="mt-2 text-sm text-muted">{children}</p>
     </main>
   );
 }

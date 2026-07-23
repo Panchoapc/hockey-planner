@@ -1,26 +1,33 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+/* Paleta de la presentacion (verde cesped) — tokens Tailwind 4. */
+@theme {
+  --color-brand: #2c5f2d;       /* verde profundo (primario) */
+  --color-brand-dark: #1f3d22;  /* hover / oscuro */
+  --color-brand-sage: #97bc62;  /* acento salvia */
+  --color-ink: #2b332a;         /* texto principal */
+  --color-muted: #6b7a68;       /* texto secundario */
+  --color-surface: #ffffff;     /* celdas / tarjetas */
+  --color-canvas: #f4f7f2;      /* fondo de pagina */
+  --color-tint: #eaf0e7;        /* headers de tabla, chips */
+  --color-line: #d9e4d6;        /* bordes */
+  --color-line-soft: #c8d6c4;   /* bordes suaves / vacios */
+  --color-varones: #dbe6d4;     /* celda varones (verde tinte) */
+  --color-varones-ink: #1f3d22;
+  --color-damas: #f0dbd3;       /* celda damas (terracota tinte) */
+  --color-damas-ink: #9a4230;
+  --color-warm: #c1553f;        /* terracota (alertas / cesion) */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Tema claro forzado: la app no usa modo oscuro; evita el fondo negro del SO
+   que rompia el contraste con las celdas claras. */
+html {
+  color-scheme: light;
 }
-
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
