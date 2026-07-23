@@ -88,9 +88,9 @@ function Panel({ res }: { res: Respuesta }) {
       </div>
 
       <div className="grid grid-cols-2 gap-x-6 gap-y-1 sm:grid-cols-5">
-        <Metrica etiqueta="Violaciones duras" valor={m.violacionesDurasTotal} bueno={ok} malo={!ok} />
+        <Metrica etiqueta="Violacion de restricciones duras" valor={m.violacionesDurasTotal} bueno={ok} malo={!ok} />
         <Metrica etiqueta="% horas lindas" valor={`${m.blandas.pctHorasLindas}%`} />
-        <Metrica etiqueta="Cesiones" valor={m.blandas.cesiones} />
+        <Metrica etiqueta="Localias cedidas" valor={m.blandas.cesiones} />
         <Metrica etiqueta="% sabado" valor={`${m.blandas.pctSabado}%`} />
         <Metrica etiqueta="Peor carga/finde" valor={peorCarga} />
       </div>
