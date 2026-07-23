@@ -158,8 +158,11 @@ function Grilla({
                           title={`${p.categoria.nombre}${cesion ? " · cesion" : ""} — ver alternativas`}
                           className={`inline-block rounded px-1.5 py-0.5 font-medium hover:underline ${p.categoria.genero === "VARONES" ? "bg-varones text-varones-ink" : "bg-damas text-damas-ink"} ${cesion ? "ring-1 ring-warm" : ""}`}
                         >
-                          {p.local.nombre}<span className="opacity-50"> v </span>{p.visita.nombre}
-                          {cesion && <span className="text-warm"> ⇄</span>}
+                          <span className="block text-[10px] leading-tight opacity-70">{p.categoria.nombre}</span>
+                          <span className="block leading-tight">
+                            {p.local.nombre}<span className="opacity-50"> v </span>{p.visita.nombre}
+                            {cesion && <span className="text-warm"> ⇄</span>}
+                          </span>
                         </a>
                       ) : (
                         <span className="text-line-soft">·</span>
